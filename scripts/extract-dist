@@ -1,0 +1,39 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+
+(ql:quickload '(:uiop :quickdocs-extracter :split-sequence) :silent t)
+
+(defun download-ql-releases (ql-dist-version)
+  (let ((url
+          (format nil
+                  "http://beta.quicklisp.org/dist/quicklisp/~A/releases.txt"
+                  ql-dist-version))
+        (file (merge-pathnames (format nil "tmp/releases-~A.txt" ql-dist-version)
+                               ql:*quicklisp-home*)))
+    (nth-value 1 (ql-http:fetch url file :quietly t))))
+
+(defun ql-releases (ql-dist-version)
+  (let ((releases.txt (download-ql-releases ql-dist-version)))
+    (loop for line in (split-sequence:split-sequence #\Newline
+                                                     (uiop:read-file-string releases.txt))
+          when (and (not (= (length line) 0))
+                    (not (char= (aref line 0) #\#)))
+            collect (let ((pos (position #\Space line)))
+                 (subseq line 0 pos)))))
+
+(defun main (output &optional (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp"))))
+  (setf output (uiop:ensure-directory-pathname output))
+  (ensure-directories-exist output)
+  (format *error-output* "~&Extracting Quicklisp dist ~S to '~A'...~%" ql-dist-version output)
+  (let ((releases (ql-releases ql-dist-version)))
+    (loop for release in releases
+          do (format t "~&Extracting ~S...~%" release)
+             (uiop:run-program `("docker" "run" "-i" "quickdocs/quickdocs-extracter"
+                                          "bash" "-c"
+                                          ,(format nil "ros ~~/common-lisp/quickdocs-extracter/scripts/extract ~S ~S"
+                                                   release ql-dist-version))
+                               :output (merge-pathnames release output)
+                               :if-output-exists :supersede))))
