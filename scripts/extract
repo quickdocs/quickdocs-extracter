@@ -1,0 +1,31 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+
+(ql:quickload '(:uiop :quickdocs-extracter) :silent t)
+
+(defun distinfo-url (ql-dist-version)
+  (cdr
+   (assoc ql-dist-version (let ((*standard-output* (make-broadcast-stream))
+                                (*trace-output* (make-broadcast-stream)))
+                            (ql-dist:available-versions (ql-dist:dist "quicklisp")))
+          :test #'string=)))
+
+(defun main (&optional name ql-dist-version)
+  (unless name
+    (format *error-output* "~&Usage: extract <release name> [<ql dist version>]~%")
+    (uiop:quit -1))
+  
+  (let ((current-dist (ql-dist:dist "quicklisp")))
+    (when (and ql-dist-version
+               (not (string= (ql-dist:version current-dist) ql-dist-version)))
+      (let ((*standard-output* *error-output*)
+            (*trace-output* *error-output*))
+        (ql-dist:install-dist (distinfo-url ql-dist-version) :prompt nil :replace t)))
+    (unwind-protect (prin1 (let ((*standard-output* *error-output*))
+                             (quickdocs-extracter:serialize-release name)))
+      (let ((*standard-output* *error-output*)
+            (*trace-output* *error-output*))
+        (ql-dist:install-dist (distinfo-url (ql-dist:version current-dist)) :prompt nil :replace t)))))
