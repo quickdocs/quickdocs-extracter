@@ -32,18 +32,19 @@
           :name release-name
           :release-version (ql-release-version release)
           :systems
-          (mapcar #'serialize-system
+          (mapcar (lambda (system)
+                    (serialize-system system dist))
                   (sort (copy-seq (ql-dist:provided-systems release))
                         #'string<
                         :key #'ql-dist:name)))))
 
-(defun serialize-system (system-designator)
+(defun serialize-system (system-designator &optional (dist (ql-dist:dist "quicklisp")))
   (let ((system (if (typep system-designator 'ql-dist:system)
                     system-designator
-                    (ql-dist:find-system system-designator)))
+                    (ql-dist:find-system-in-dist system-designator dist)))
         asdf-system)
     (unless system
-      (error "System ~S is not found in ~S" system-designator (ql-dist:dist "quicklisp")))
+      (error "System ~S is not found in ~S" system-designator dist))
     (let ((index (parse (ql-dist:name system)))
           packages)
       (do-packages (package index)
