@@ -25,15 +25,16 @@ exec ros -Q -- $0 "$@"
                  (subseq line 0 pos)))))
 
 (defun main (output &optional (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp")))
-             &aux (log-dir #P"logs/"))
+             &aux (log-dir #P"logs/") (error-dir #P"errors/"))
   (setf output (uiop:ensure-directory-pathname output))
   (ensure-directories-exist output)
   (ensure-directories-exist log-dir)
+  (ensure-directories-exist error-dir)
   (format *error-output* "~&Extracting Quicklisp dist ~S to '~A'...~%" ql-dist-version output)
   (let ((releases (ql-releases ql-dist-version)))
     (loop for release in releases
-          for log = (merge-pathnames release (merge-pathnames release log-dir))
-          do (format t "~&Extracting ~S...~%" release)
+          for log = (merge-pathnames release log-dir)
+          do (format t "~&Extracting ~S..." release)
              (handler-case
                  (uiop:run-program `("docker" "run" "-i" "quickdocs/quickdocs-extracter"
                                               "bash" "-c"
@@ -43,9 +44,8 @@ exec ros -Q -- $0 "$@"
                                    :error-output log
                                    :if-output-exists :supersede
                                    :if-error-output-exists :supersede)
-               (uiop:subprocess-error (e)
-                 (format t "~&~A~%" e)
-                 (when (probe-file log)
-                   (let ((error (uiop:read-file-string log)))
-                     (unless (= 0 (length error))
-                       (format t "~&~A~%" error)))))))))
+               (uiop:subprocess-error ()
+                 (let ((error-log (merge-pathnames release error-dir)))
+                   (uiop:copy-file log error-log)
+                   (format t "failed.~%See '~A' for the detail." error-log))))
+             (fresh-line))))

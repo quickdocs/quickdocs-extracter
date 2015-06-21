@@ -29,12 +29,13 @@
                '()))))
 
 (defun serialize-list (list)
-  (mapcar (lambda (item)
-            (typecase item
-              (null nil)
-              (cons (serialize-list item))
-              ((and symbol
-                    (not keyword))
-               (serialize-symbol item))
-              (otherwise item)))
-          list))
+  (labels ((serialize (item)
+             (typecase item
+               (null nil)
+               (cons (cons (serialize (car item))
+                           (serialize (cdr item))))
+               ((and symbol
+                     (not keyword))
+                (serialize-symbol item))
+               (otherwise item))))
+    (mapcar #'serialize list)))
