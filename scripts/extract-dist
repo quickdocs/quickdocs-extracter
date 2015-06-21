@@ -25,12 +25,15 @@ exec ros -Q -- $0 "$@"
                  (subseq line 0 pos)))))
 
 (defun main (&optional (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp")))
+               resume-from
              &aux (log-dir #P"logs/") (error-dir #P"errors/")
                (result-dir (uiop:ensure-directory-pathname
                             (merge-pathnames ql-dist-version #P"dists/"))))
   (format *error-output* "~&Extracting Quicklisp dist ~S to '~A'...~%" ql-dist-version result-dir)
   (mapc #'ensure-directories-exist (list result-dir log-dir error-dir))
   (let ((releases (ql-releases ql-dist-version)))
+    (when resume-from
+      (setf releases (member resume-from releases :test #'string=)))
     (loop for release in releases
           for log = (merge-pathnames release log-dir)
           do (format t "~&Extracting ~S..." release)
