@@ -53,7 +53,14 @@
                (or
                 #+sbcl (and (<= 3 (length (string dep)))
                             (string-equal dep "sb-" :end1 3))
-                (string-equal dep :asdf))))
+                (string-equal dep :asdf)))
+             (dependency-name (dep)
+               (if (listp dep)
+                   (progn
+                     (unless (eq (first dep) :version)
+                       (error "Unexpected :depends-on: ~S" dep))
+                     (second dep))
+                   dep)))
         (setf asdf-system (asdf:find-system (ql-dist:name system)))
         (list :type :system
               :name (ql-dist:name system)
@@ -73,7 +80,8 @@
                                              (asdf:component-sideway-dependencies asdf-system)))
               :defsystem-depends-on (mapcar #'string-downcase
                                             (remove-if #'ignorable-dependency-p
-                                                       (asdf:system-defsystem-depends-on asdf-system)))
+                                                       (mapcar #'dependency-name
+                                                               (asdf:system-defsystem-depends-on asdf-system))))
               :packages packages)))))
 
 (defun serialize-package (package)
@@ -90,7 +98,8 @@
 (defgeneric serialize-node (node)
   (:method ((node name-node))
     (list :name (serialize-symbol (node-name node))
-          :externalp (symbol-external-p (node-name node))))
+          :externalp (and (symbol-package (node-name node))
+                          (symbol-external-p (node-name node)))))
   (:method ((node documentation-node))
     (append (call-next-method)
             (list :docstring (node-docstring node))))

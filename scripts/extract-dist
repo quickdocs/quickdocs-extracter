@@ -4,7 +4,7 @@
 exec ros -Q -- $0 "$@"
 |#
 
-(ql:quickload '(:uiop :quickdocs-extracter :split-sequence) :silent t)
+(ql:quickload '(:uiop :split-sequence) :silent t)
 
 (defun download-ql-releases (ql-dist-version)
   (let ((url
@@ -24,16 +24,28 @@ exec ros -Q -- $0 "$@"
             collect (let ((pos (position #\Space line)))
                  (subseq line 0 pos)))))
 
-(defun main (output &optional (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp"))))
+(defun main (output &optional (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp")))
+             &aux (log-dir #P"logs/"))
   (setf output (uiop:ensure-directory-pathname output))
   (ensure-directories-exist output)
+  (ensure-directories-exist log-dir)
   (format *error-output* "~&Extracting Quicklisp dist ~S to '~A'...~%" ql-dist-version output)
   (let ((releases (ql-releases ql-dist-version)))
     (loop for release in releases
+          for log = (merge-pathnames release (merge-pathnames release log-dir))
           do (format t "~&Extracting ~S...~%" release)
-             (uiop:run-program `("docker" "run" "-i" "quickdocs/quickdocs-extracter"
-                                          "bash" "-c"
-                                          ,(format nil "ros ~~/common-lisp/quickdocs-extracter/scripts/extract ~S ~S"
-                                                   release ql-dist-version))
-                               :output (merge-pathnames release output)
-                               :if-output-exists :supersede))))
+             (handler-case
+                 (uiop:run-program `("docker" "run" "-i" "quickdocs/quickdocs-extracter"
+                                              "bash" "-c"
+                                              ,(format nil "ros ~~/common-lisp/quickdocs-extracter/scripts/extract ~S ~S"
+                                                       release ql-dist-version))
+                                   :output (merge-pathnames release output)
+                                   :error-output log
+                                   :if-output-exists :supersede
+                                   :if-error-output-exists :supersede)
+               (uiop:subprocess-error (e)
+                 (format t "~&~A~%" e)
+                 (when (probe-file log)
+                   (let ((error (uiop:read-file-string log)))
+                     (unless (= 0 (length error))
+                       (format t "~&~A~%" error)))))))))

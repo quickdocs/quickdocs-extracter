@@ -23,16 +23,19 @@ exec ros -Q -- $0 "$@"
                (*trace-output* *error-output*))
            (ql-dist:install-dist (distinfo-url ,g-ql-dist-version) :prompt nil :replace t)))
        (unwind-protect (progn ,@body)
-         (let ((*standard-output* *error-output*)
-               (*trace-output* *error-output*))
-           (ql-dist:install-dist (distinfo-url (ql-dist:version ,current-dist)) :prompt nil :replace t))))))
+         (unless (string= (ql-dist:version ,current-dist) (ql-dist:version (ql-dist:dist "quicklisp")))
+           (let ((*standard-output* *error-output*)
+                 (*trace-output* *error-output*))
+             (ql-dist:install-dist (distinfo-url (ql-dist:version ,current-dist)) :prompt nil :replace t)))))))
 
 (defun main (&optional name (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp"))))
   (unless name
     (format *error-output* "~&Usage: extract <release name> [<ql dist version>]~%")
     (uiop:quit -1))
   
-  (with-ql-dist ql-dist-version
-    (prin1 (let ((*standard-output* *error-output*)
-                 (*trace-output* *error-output*))
-             (quickdocs-extracter:serialize-release name)))))
+  (let ((sb-impl::*default-external-format* :utf-8)
+        (sb-alien::*default-c-string-external-format* :utf-8))
+    (with-ql-dist ql-dist-version
+      (prin1 (let ((*standard-output* *error-output*)
+                   (*trace-output* *error-output*))
+               (quickdocs-extracter:serialize-release name))))))

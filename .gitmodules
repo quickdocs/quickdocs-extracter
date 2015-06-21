@@ -1,0 +1,3 @@
+[submodule "modules/quickdocs-parser"]
+	path = modules/quickdocs-parser
+	url = https://github.com/quickdocs/quickdocs-parser

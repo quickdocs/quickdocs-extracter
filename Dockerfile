@@ -1,6 +1,13 @@
-FROM fukamachi/roswell:0.0.2.34
+FROM fukamachi/roswell
 MAINTAINER Eitaro Fukamachi <e.arrows@gmail.com>
 
-RUN mkdir -p ~/common-lisp
-RUN git clone --depth 1 https://github.com/quickdocs/quickdocs-parser ~/common-lisp/quickdocs-parser
-RUN git clone --depth 1 https://github.com/quickdocs/quickdocs-extracter ~/common-lisp/quickdocs-extracter
+RUN mkdir -p /root/common-lisp
+COPY modules/quickdocs-parser /root/common-lisp/quickdocs-parser
+COPY . /root/common-lisp/quickdocs-extracter
+
+# for asteroids & blackthorn-engine
+RUN apt-get install -y libsdl1.2-dev
+# for CFFI
+RUN apt-get install -y libffi-dev
+# for cells-gtk3
+RUN apt-get install -y libgtkglext1-dev
