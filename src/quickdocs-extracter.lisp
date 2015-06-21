@@ -77,7 +77,8 @@
               ;; NOTE: Not using ql::required-systems because it's in random order.
               :depends-on (mapcar #'string-downcase
                                   (remove-if #'ignorable-dependency-p
-                                             (asdf:component-sideway-dependencies asdf-system)))
+                                             (mapcar #'dependency-name
+                                                     (asdf:component-sideway-dependencies asdf-system))))
               :defsystem-depends-on (mapcar #'string-downcase
                                             (remove-if #'ignorable-dependency-p
                                                        (mapcar #'dependency-name
