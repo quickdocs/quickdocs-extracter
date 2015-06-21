@@ -24,13 +24,12 @@ exec ros -Q -- $0 "$@"
             collect (let ((pos (position #\Space line)))
                  (subseq line 0 pos)))))
 
-(defun main (output &optional (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp")))
-             &aux (log-dir #P"logs/") (error-dir #P"errors/"))
-  (setf output (uiop:ensure-directory-pathname output))
-  (ensure-directories-exist output)
-  (ensure-directories-exist log-dir)
-  (ensure-directories-exist error-dir)
-  (format *error-output* "~&Extracting Quicklisp dist ~S to '~A'...~%" ql-dist-version output)
+(defun main (&optional (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp")))
+             &aux (log-dir #P"logs/") (error-dir #P"errors/")
+               (result-dir (uiop:ensure-directory-pathname
+                            (merge-pathnames ql-dist-version #P"dists/"))))
+  (format *error-output* "~&Extracting Quicklisp dist ~S to '~A'...~%" ql-dist-version result-dir)
+  (mapc #'ensure-directories-exist (list result-dir log-dir error-dir))
   (let ((releases (ql-releases ql-dist-version)))
     (loop for release in releases
           for log = (merge-pathnames release log-dir)
@@ -40,7 +39,7 @@ exec ros -Q -- $0 "$@"
                                               "bash" "-c"
                                               ,(format nil "ros ~~/common-lisp/quickdocs-extracter/scripts/extract ~S ~S"
                                                        release ql-dist-version))
-                                   :output (merge-pathnames release output)
+                                   :output (merge-pathnames release result-dir)
                                    :error-output log
                                    :if-output-exists :supersede
                                    :if-error-output-exists :supersede)
