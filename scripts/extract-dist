@@ -4,9 +4,11 @@
 exec ros -Q -- $0 "$@"
 |#
 
-(ql:quickload '(:uiop :split-sequence) :silent t)
+(ql:quickload '(:uiop :split-sequence :legion :bordeaux-threads) :silent t)
 
 (import 'split-sequence:split-sequence)
+
+(defvar *worker-num* 4)
 
 (defun download-ql-releases (ql-dist-version)
   (let ((url
@@ -32,23 +34,35 @@ exec ros -Q -- $0 "$@"
                             (merge-pathnames ql-dist-version #P"dists/"))))
   (format *error-output* "~&Extracting Quicklisp dist ~S to '~A'...~%" ql-dist-version result-dir)
   (mapc #'ensure-directories-exist (list result-dir logs-dir errors-dir))
-  (let ((releases (ql-releases ql-dist-version)))
+  (let* ((releases (ql-releases ql-dist-version))
+         (bt:*default-special-bindings* `((*standard-output* . ,*standard-output*)
+                                          (*error-output* . ,*error-output*)))
+         (cluster (legion:make-cluster *worker-num*
+                     (lambda (worker)
+                       (multiple-value-bind (release existsp)
+                           (legion:next-job worker)
+                         (when existsp
+                           (format t "~&Extracting ~S..." release) (force-output)
+                           (handler-case
+                               (uiop:run-program `("docker" "run" "-i" "quickdocs/quickdocs-extracter"
+                                                            "bash" "-c"
+                                                            ,(format nil "timeout 5m ros ~~/common-lisp/quickdocs-extracter/scripts/extract-release ~S ~S"
+                                                                     release ql-dist-version))
+                                                 :output (merge-pathnames release result-dir)
+                                                 :error-output (merge-pathnames release logs-dir)
+                                                 :if-output-exists :supersede
+                                                 :if-error-output-exists :supersede)
+                             (uiop:subprocess-error ()
+                               (let ((error-log (merge-pathnames release errors-dir)))
+                                 (uiop:copy-file (merge-pathnames release logs-dir)
+                                                 error-log)
+                                 (format t "failed.~%See '~A' for the detail." error-log))))
+                           (fresh-line))))
+                     :queue-size (1+ (floor (/ (length releases) *worker-num*))))))
     (when resume-from
       (setf releases (member resume-from releases :test #'string=)))
     (dolist (release releases)
-      (format t "~&Extracting ~S..." release) (force-output)
-      (handler-case
-          (uiop:run-program `("docker" "run" "-i" "quickdocs/quickdocs-extracter"
-                                       "bash" "-c"
-                                       ,(format nil "timeout 5m ros ~~/common-lisp/quickdocs-extracter/scripts/extract-release ~S ~S"
-                                                release ql-dist-version))
-                            :output (merge-pathnames release result-dir)
-                            :error-output (merge-pathnames release logs-dir)
-                            :if-output-exists :supersede
-                            :if-error-output-exists :supersede)
-        (uiop:subprocess-error ()
-          (let ((error-log (merge-pathnames release errors-dir)))
-            (uiop:copy-file (merge-pathnames release logs-dir)
-                            error-log)
-            (format t "failed.~%See '~A' for the detail." error-log))))
-      (fresh-line))))
+      (legion:add-job cluster release))
+    (legion:start-cluster cluster)
+    (loop until (eq (legion:cluster-status cluster) :idle)
+          do (sleep 5))))
