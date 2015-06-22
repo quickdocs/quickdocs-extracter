@@ -4,9 +4,7 @@
 exec ros -Q -- $0 "$@"
 |#
 
-(ql:quickload '(:uiop :split-sequence) :silent t)
-
-(import 'split-sequence:split-sequence)
+(ql:quickload :uiop :silent t)
 
 (defun download-ql-systems (ql-dist-version)
   (let ((url
@@ -19,14 +17,23 @@ exec ros -Q -- $0 "$@"
 
 (defun release-systems (release-name ql-dist-version)
   (let ((systems.txt (download-ql-systems ql-dist-version)))
-    (with-open-file (in systems.txt)
-      (loop for line = (read-line in nil nil)
-            while line
-            when (and (not (= (length line) 0))
-                      (not (char= (aref line 0) #\#))
-                      (<= (length release-name) (length line))
-                      (string= line release-name :end1 (length release-name)))
-              collect (nth 2 (split-sequence #\Space line :count 3))))))
+    (labels ((nth-of-line (n line)
+               (if (= n 0)
+                   (subseq line 0 (position #\Space line))
+                   (subseq line
+                           (1+ (n-position #\Space line (1- n)))
+                           (n-position #\Space line n))))
+             (n-position (item line n &key (start 0))
+               (if (= n 0)
+                   (position item line :start start)
+                   (n-position item line (1- n) :start (1+ (position item line :start start))))))
+      (with-open-file (in systems.txt)
+        (loop for line = (read-line in nil nil)
+              while line
+              when (and (not (= (length line) 0))
+                        (not (char= (aref line 0) #\#))
+                        (string= (nth-of-line 0 line) release-name))
+                collect (nth-of-line 2 line))))))
 
 (defun main (&optional name (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp"))))
   (unless name
