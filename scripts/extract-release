@@ -40,6 +40,14 @@ exec ros -Q -- $0 "$@"
     (uiop:quit -1))
 
   (load-ql-releases ql-dist-version)
-  (dolist (system (gethash name *ql-release-systems*))
-    (uiop:run-program `("ros" ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
-                              ,system ,ql-dist-version))))
+  (let (failed)
+    (dolist (system (gethash name *ql-release-systems*))
+      (handler-case
+          (uiop:run-program `("ros" ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
+                                    ,system ,ql-dist-version)
+                            :output *standard-output*
+                            :error-output *error-output*)
+        (uiop:subprocess-error (e)
+          (setf failed t)
+          (format *error-output* "~&~A~2%" e))))
+    (uiop:quit (if failed -1 0))))
