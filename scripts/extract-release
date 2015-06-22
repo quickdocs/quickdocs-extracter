@@ -42,5 +42,6 @@ exec ros -Q -- $0 "$@"
                             :error-output *error-output*)
         (uiop:subprocess-error (e)
           (setf failed t)
-          (format *error-output* "~&~A~2%" e))))
+          (format *error-output* "~&~A~2%" e)))
+      (fresh-line))
     (uiop:quit (if failed -1 0))))
