@@ -1,0 +1,45 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+
+(ql:quickload '(:uiop :split-sequence) :silent t)
+
+(import 'split-sequence:split-sequence)
+
+(defun download-ql-releases (ql-dist-version)
+  (let ((url
+          (format nil
+                  "http://beta.quicklisp.org/dist/quicklisp/~A/releases.txt"
+                  ql-dist-version))
+        (file (merge-pathnames (format nil "tmp/releases-~A.txt" ql-dist-version)
+                               ql:*quicklisp-home*)))
+    (nth-value 1 (ql-http:fetch url file :quietly t))))
+
+(defvar *ql-release-systems* (make-hash-table :test 'equal))
+(defun load-ql-releases (ql-dist-version)
+  (let ((releases.txt (download-ql-releases ql-dist-version))
+        releases)
+    (loop for line in (split-sequence #\Newline
+                                      (uiop:read-file-string releases.txt))
+          when (and (not (= (length line) 0))
+                    (not (char= (aref line 0) #\#)))
+            do (let ((release (first (split-sequence #\Space line :count 1)))
+                     (systems (mapcar (lambda (asd)
+                                        ;; Omit .asd
+                                        (subseq asd 0 (- (length asd) 4)))
+                                      (nthcdr 6 (split-sequence #\Space line)))))
+                 (setf (gethash release *ql-release-systems*) systems)
+                 (push release releases)))
+    (nreverse releases)))
+
+(defun main (&optional name (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp"))))
+  (unless name
+    (format *error-output* "~&Usage: extract-release <release name> [<ql dist version>]~%")
+    (uiop:quit -1))
+
+  (load-ql-releases ql-dist-version)
+  (dolist (system (gethash name *ql-release-systems*))
+    (uiop:run-program `("ros" ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
+                              ,system ,ql-dist-version))))

@@ -17,22 +17,13 @@ exec ros -Q -- $0 "$@"
                                ql:*quicklisp-home*)))
     (nth-value 1 (ql-http:fetch url file :quietly t))))
 
-(defvar *ql-release-systems* (make-hash-table :test 'equal))
-(defun load-ql-releases (ql-dist-version)
-  (let ((releases.txt (download-ql-releases ql-dist-version))
-        releases)
+(defun ql-releases (ql-dist-version)
+  (let ((releases.txt (download-ql-releases ql-dist-version)))
     (loop for line in (split-sequence #\Newline
                                       (uiop:read-file-string releases.txt))
           when (and (not (= (length line) 0))
                     (not (char= (aref line 0) #\#)))
-            do (let ((release (first (split-sequence #\Space line :count 1)))
-                     (systems (mapcar (lambda (asd)
-                                        ;; Omit .asd
-                                        (subseq asd 0 (- (length asd) 4)))
-                                      (nthcdr 6 (split-sequence #\Space line)))))
-                 (setf (gethash release *ql-release-systems*) systems)
-                 (push release releases)))
-    (nreverse releases)))
+            collect (first (split-sequence #\Space line :count 1)))))
 
 (defun main (&optional (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp")))
                resume-from
@@ -41,32 +32,23 @@ exec ros -Q -- $0 "$@"
                             (merge-pathnames ql-dist-version #P"dists/"))))
   (format *error-output* "~&Extracting Quicklisp dist ~S to '~A'...~%" ql-dist-version result-dir)
   (mapc #'ensure-directories-exist (list result-dir logs-dir errors-dir))
-  (let ((releases (load-ql-releases ql-dist-version)))
+  (let ((releases (ql-releases ql-dist-version)))
     (when resume-from
       (setf releases (member resume-from releases :test #'string=)))
-    (loop for release in releases
-          for systems = (gethash release *ql-release-systems*)
-          for output-dir = (uiop:ensure-directory-pathname
-                            (merge-pathnames release result-dir))
-          for release-log-dir = (uiop:ensure-directory-pathname
-                                 (merge-pathnames release logs-dir))
-          for release-error-dir = (uiop:ensure-directory-pathname
-                                   (merge-pathnames release errors-dir))
-          do (format t "~&Extracting ~S..." release)
-             (mapc #'ensure-directories-exist (list output-dir release-log-dir release-error-dir))
-             (loop for system in systems
-                   do (handler-case
-                          (uiop:run-program `("docker" "run" "-i" "quickdocs/quickdocs-extracter"
-                                                       "bash" "-c"
-                                                       ,(format nil "timeout 5m ros ~~/common-lisp/quickdocs-extracter/scripts/extract-system ~S ~S"
-                                                                system ql-dist-version))
-                                            :output (merge-pathnames system output-dir)
-                                            :error-output (merge-pathnames system release-log-dir)
-                                            :if-output-exists :supersede
-                                            :if-error-output-exists :supersede)
-                        (uiop:subprocess-error ()
-                          (let ((error-log (merge-pathnames system release-error-dir)))
-                            (uiop:copy-file (merge-pathnames system release-log-dir)
-                                            error-log)
-                            (format t "failed.~%See '~A' for the detail." error-log)))))
-             (fresh-line))))
+    (dolist (release releases)
+      (format t "~&Extracting ~S..." release)
+      (handler-case
+          (uiop:run-program `("docker" "run" "-i" "quickdocs/quickdocs-extracter"
+                                       "bash" "-c"
+                                       ,(format nil "timeout 5m ros ~~/common-lisp/quickdocs-extracter/scripts/extract-release ~S ~S"
+                                                release ql-dist-version))
+                            :output (merge-pathnames release result-dir)
+                            :error-output (merge-pathnames release logs-dir)
+                            :if-output-exists :supersede
+                            :if-error-output-exists :supersede)
+        (uiop:subprocess-error ()
+          (let ((error-log (merge-pathnames release errors-dir)))
+            (uiop:copy-file (merge-pathnames release logs-dir)
+                            error-log)
+            (format t "failed.~%See '~A' for the detail." error-log))))
+      (fresh-line))))

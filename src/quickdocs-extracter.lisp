@@ -7,7 +7,8 @@
   (:shadowing-import-from :quickdocs-extracter.parser
                           :variable-node
                           :method-node)
-  (:export :serialize-release))
+  (:export :serialize-release
+           :serialize-system))
 (in-package :quickdocs-extracter)
 
 (defun ql-release-version (release)
