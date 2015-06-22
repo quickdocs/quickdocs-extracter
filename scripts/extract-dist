@@ -58,7 +58,7 @@ exec ros -Q -- $0 "$@"
                    do (handler-case
                           (uiop:run-program `("docker" "run" "-i" "quickdocs/quickdocs-extracter"
                                                        "bash" "-c"
-                                                       ,(format nil "ros ~~/common-lisp/quickdocs-extracter/scripts/extract-system ~S ~S"
+                                                       ,(format nil "timeout 5m ros ~~/common-lisp/quickdocs-extracter/scripts/extract-system ~S ~S"
                                                                 system ql-dist-version))
                                             :output (merge-pathnames system output-dir)
                                             :error-output (merge-pathnames system release-log-dir)
