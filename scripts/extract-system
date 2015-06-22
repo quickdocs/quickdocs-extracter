@@ -30,7 +30,7 @@ exec ros -Q -- $0 "$@"
 
 (defun main (&optional name (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp"))))
   (unless name
-    (format *error-output* "~&Usage: extract <release name> [<ql dist version>]~%")
+    (format *error-output* "~&Usage: extract-system <system name> [<ql dist version>]~%")
     (uiop:quit -1))
   
   (let ((sb-impl::*default-external-format* :utf-8)
@@ -38,4 +38,4 @@ exec ros -Q -- $0 "$@"
     (with-ql-dist ql-dist-version
       (prin1 (let ((*standard-output* *error-output*)
                    (*trace-output* *error-output*))
-               (quickdocs-extracter:serialize-release name))))))
+               (quickdocs-extracter:serialize-system name))))))
