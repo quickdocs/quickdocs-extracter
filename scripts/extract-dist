@@ -36,7 +36,7 @@ exec ros -Q -- $0 "$@"
     (when resume-from
       (setf releases (member resume-from releases :test #'string=)))
     (dolist (release releases)
-      (format t "~&Extracting ~S..." release)
+      (format t "~&Extracting ~S..." release) (force-output)
       (handler-case
           (uiop:run-program `("docker" "run" "-i" "quickdocs/quickdocs-extracter"
                                        "bash" "-c"
