@@ -45,6 +45,9 @@ RUN apt-get install -y liblapack-dev
 # libgdk-3.so for cl-cffi-gtk
 RUN apt-get install -y libgtk-3-dev
 
+# for lambda-gtk
+RUN apt-get install -y libgtk2.0-dev
+
 # libmysqlclient_r.so for cl-mysql
 RUN apt-get install -y libmysqlclient-dev
 
@@ -78,8 +81,8 @@ RUN apt-get install -y libglfw-dev
 # libkyotocabinet for cl-kyoto-cabinet
 RUN apt-get install -y libkyotocabinet-dev
 
-# libevent_core.so for cl-libevent2
-RUN apt-get install -y libevent1-dev
+# for cl-libevent2
+RUN apt-get install -y libevent-dev libevent-openssl-2.0-5
 
 # libpuzzle.so.1 for cl-libpuzzle
 RUN apt-get install -y libpuzzle-dev
@@ -93,17 +96,17 @@ RUN apt-get install -y liblinear-dev
 # libyaml-0.so.2.0.4 for cl-libyaml
 RUN apt-get install -y libyaml-dev
 
-# libLLVM-3.1 for cl-llvm
-RUN apt-get install -y libllvm3.6
+# libLLVM-3.6 for cl-llvm
+# RUN apt-get install -y libllvm3.6
 
 # libblas for lla
 RUN apt-get install -y libblas-dev
 
 # libsybdb.so for cl-mssql
-RUN apt-get install -y libsybdb5
+RUN apt-get install -y freetds-dev
 
-# libopenal.so for cl-openal
-RUN apt-get install -y libopenal-dev
+# for cl-openal
+RUN apt-get install -y libopenal-dev libalut-dev
 
 # libplplot for cl-plplot
 RUN apt-get install -y libplplot-dev
@@ -138,7 +141,8 @@ RUN curl -SL https://github.com/pmwkaa/sophia/archive/version_1.2.2.tar.gz \
   | tar -xzC /tmp/sophia-1.2.2 --strip-components=1 \
   && cd /tmp/sophia-1.2.2 \
   && make -f makefile dynamic \
-  && mv libsophia.so /usr/lib
+  && cp libsophia.so.1.2 libsophia.so.1.2.2 /usr/lib \
+  && ln -s /usr/lib/libsophia.so.1.2.2 /usr/lib/libsophia.so
 
 # libtcod for cl-tcod
 RUN mkdir -p /tmp/libtcod-1.5.1
@@ -146,7 +150,7 @@ RUN curl -SL https://bitbucket.org/libtcod/libtcod/get/1.5.1.tar.gz \
   | tar -xzC /tmp/libtcod-1.5.1 --strip-components=1 \
   && cd /tmp/libtcod-1.5.1 \
   && make -f makefiles/makefile-linux64 release \
-  && mv libtcod.so libtcodxx.so libtcodgui.so /usr/lib
+  && cp libtcod.so libtcodxx.so libtcodgui.so /usr/lib
 
 # libtidy for cl-tidy
 RUN apt-get install -y libtidy-dev
@@ -171,3 +175,39 @@ RUN apt-get install -y libfreeimage-dev
 
 # libhspell for hspell
 RUN apt-get install -y hspell
+RUN curl -SL http://hspell.ivrix.org.il/hspell-1.3.tar.gz \
+  | tar -xzC /tmp/ \
+  && cd /tmp/hspell-1.3 \
+  && ./configure \
+  && make libhspell.so.0 \
+  && cp libhspell.so* /usr/lib
+
+# Python.h for burgled-batteries
+RUN apt-get install -y libpython2.7-dev
+
+# fam.h for cl-fam
+RUN apt-get install -y libfam-dev
+
+# fuse.h for cl-fuse
+RUN apt-get install -y libfuse-dev
+
+# libftgl.so for cl-glfw
+RUN apt-get install -y libftgl-dev
+
+# libsvm.so for cl-libsvm
+RUN apt-get install -y libsvm-dev
+
+# usb.h for cl-libusb
+RUN apt-get install -y libusb-dev
+
+# for cl-rabbit
+RUN apt-get install -y librabbitmq-dev
+
+# for cl-sane
+RUN apt-get install -y swig
+
+# for cl-webkit
+RUN apt-get install -y libsoup2.4-dev
+
+# for commonqt
+RUN apt-get install -y qt4-qmake
