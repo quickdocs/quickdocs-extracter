@@ -5,6 +5,8 @@ RUN mkdir -p /root/common-lisp
 COPY modules/quickdocs-parser /root/common-lisp/quickdocs-parser
 COPY . /root/common-lisp/quickdocs-extracter
 
+RUN apt-get update
+
 # for asteroids & blackthorn-engine
 RUN apt-get install -y libsdl1.2-dev
 
