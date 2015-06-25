@@ -4,6 +4,8 @@
 exec ros -Q -- $0 "$@"
 |#
 
+;; Use the local Legion (v0.1.1)
+(load (merge-pathnames #P"../modules/legion/legion.asd" *load-pathname*))
 (ql:quickload '(:uiop :split-sequence :legion :bordeaux-threads) :silent t)
 
 (import 'split-sequence:split-sequence)
@@ -64,5 +66,4 @@ exec ros -Q -- $0 "$@"
     (dolist (release releases)
       (legion:add-job cluster release))
     (legion:start-cluster cluster)
-    (loop until (eq (legion:cluster-status cluster) :idle)
-          do (sleep 5))))
+    (legion:join-worker-threads cluster)))

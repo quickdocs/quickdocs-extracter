@@ -1,3 +1,6 @@
 [submodule "modules/quickdocs-parser"]
 	path = modules/quickdocs-parser
 	url = https://github.com/quickdocs/quickdocs-parser
+[submodule "modules/legion"]
+	path = modules/legion
+	url = https://github.com/fukamachi/legion
