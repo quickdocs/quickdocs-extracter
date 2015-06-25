@@ -43,12 +43,16 @@ exec ros -Q -- $0 "$@"
   (let (failed)
     (dolist (system (release-systems name ql-dist-version))
       (handler-case
-          (uiop:run-program `("ros" ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
+          (uiop:run-program `("timeout" "5m"
+                              "ros" ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
                                     ,system ,ql-dist-version)
                             :output *standard-output*
                             :error-output *error-output*)
         (uiop:subprocess-error (e)
           (setf failed t)
-          (format *error-output* "~&~A~2%" e)))
+          (if (= (uiop:subprocess-error-code e) 124)
+              ;; timeout
+              (format *error-output* "~&Timeout.~2%")
+              (format *error-output* "~&~A~2%" e))))
       (fresh-line))
     (uiop:quit (if failed -1 0))))
