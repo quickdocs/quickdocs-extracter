@@ -44,9 +44,8 @@ exec ros -Q -- $0 "$@"
     (dolist (system (release-systems name ql-dist-version))
       (handler-case
           (uiop:run-program `("timeout" "5m"
-                              "ros" "dynamic-space-size=400"
-                                    ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
-                                    ,system ,ql-dist-version)
+                              ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
+                              ,system ,ql-dist-version)
                             :output *standard-output*
                             :error-output *error-output*)
         (uiop:subprocess-error (e)
