@@ -211,3 +211,27 @@ RUN apt-get install -y libsoup2.4-dev
 
 # for commonqt
 RUN apt-get install -y qt4-qmake
+
+# libnet.so for lispbuilder
+RUN apt-get install -y libnet1-dev
+
+# for plain-odbc
+RUN apt-get install -y unixodbc-dev
+
+# for plokami
+RUN apt-get install -y libpcap0.8-dev
+
+# libcsnd.so for sqnc
+RUN apt-get install -y libcsnd-dev
+
+# libssl for teepeedee2
+RUN apt-get install -y libssl-dev
+
+# libmpg123.so.0 for mixalot
+RUN apt-get install -y libmpg123-dev
+
+# libpapi.so for perfpiece
+RUN apt-get install -y libpapi-dev
+
+# libsnappy.so for thnappy
+RUN apt-get install -y libsnappy-dev
