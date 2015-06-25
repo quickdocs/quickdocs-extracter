@@ -39,6 +39,7 @@ exec ros -Q -- $0 "$@"
   (let* ((releases (ql-releases ql-dist-version))
          (bt:*default-special-bindings* `((*standard-output* . ,*standard-output*)
                                           (*error-output* . ,*error-output*)))
+         (failed 0)
          (cluster (legion:make-cluster *worker-num*
                      (lambda (worker)
                        (multiple-value-bind (release existsp)
@@ -58,6 +59,7 @@ exec ros -Q -- $0 "$@"
                                (let ((error-log (merge-pathnames release errors-dir)))
                                  (uiop:copy-file (merge-pathnames release logs-dir)
                                                  error-log)
+                                 (incf failed)
                                  (format t "failed.~%See '~A' for the detail." error-log))))
                            (fresh-line))))
                      :queue-size (1+ (floor (/ (length releases) *worker-num*))))))
@@ -66,4 +68,8 @@ exec ros -Q -- $0 "$@"
     (dolist (release releases)
       (legion:add-job cluster release))
     (legion:start-cluster cluster)
-    (legion:join-worker-threads cluster)))
+    (legion:join-worker-threads cluster)
+
+    (format t "~&~D releases are successfully extracted, and ~D releases are failed.~%"
+            (- (length releases) failed)
+            failed)))
