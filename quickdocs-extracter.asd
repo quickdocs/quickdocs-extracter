@@ -18,7 +18,8 @@
   :version "0.1"
   :author "Eitaro Fukamachi"
   :license "BSD 2-Clause"
-  :depends-on (:quickdocs-parser)
+  :depends-on (:quickdocs-parser
+               :uiop)
   :components ((:module "src"
                 :components
                 ((:file "quickdocs-extracter" :depends-on ("parser" "data"))

@@ -24,14 +24,27 @@
             (+ (length base-url) 11
                (length (ql-dist:name release))))))
 
+(defun readme-file (release)
+  (check-type release ql-dist:release)
+  (assert (ql-dist:installedp release))
+  (find "README"
+        (uiop:directory-files (ql-dist:base-directory release))
+        :key #'pathname-name
+        :test #'string=))
+
 (defun serialize-release (release-name &optional (dist (ql-dist:dist "quicklisp")))
   (check-type release-name string)
   (let ((release (ql-dist:find-release-in-dist release-name dist)))
     (unless release
       (error "Release ~S is not found in ~S" release-name dist))
-    (list :type :release
-          :name release-name
-          :release-version (ql-release-version release))))
+    (ql-dist:ensure-installed release)
+    (let ((readme-file (readme-file release)))
+      (list :type :release
+            :name release-name
+            :release-version (ql-release-version release)
+            :readme-file (subseq (namestring readme-file)
+                                 (length (namestring (ql-dist:base-directory release))))
+            :readme (uiop:read-file-string readme-file)))))
 
 (defun serialize-system (system-designator &optional (dist (ql-dist:dist "quicklisp")))
   (let ((system (if (typep system-designator 'ql-dist:system)
