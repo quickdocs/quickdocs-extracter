@@ -1,0 +1,27 @@
+(in-package :cl-user)
+(defpackage quickdocs-extracter.util
+  (:use :cl)
+  (:export :with-ql-dist))
+(in-package :quickdocs-extracter.util)
+
+(defun distinfo-url (ql-dist-version)
+  (cdr
+   (assoc ql-dist-version (let ((*standard-output* (make-broadcast-stream))
+                                (*trace-output* (make-broadcast-stream)))
+                            (ql-dist:available-versions (ql-dist:dist "quicklisp")))
+          :test #'string=)))
+
+(defmacro with-ql-dist (ql-dist-version &body body)
+  (let ((current-dist (gensym))
+        (g-ql-dist-version (gensym)))
+    `(let ((,current-dist (ql-dist:dist "quicklisp"))
+           (,g-ql-dist-version ,ql-dist-version))
+       (unless (string= (ql-dist:version ,current-dist) ,g-ql-dist-version)
+         (let ((*standard-output* *error-output*)
+               (*trace-output* *error-output*))
+           (ql-dist:install-dist (distinfo-url ,g-ql-dist-version) :prompt nil :replace t)))
+       (unwind-protect (progn ,@body)
+         (unless (string= (ql-dist:version ,current-dist) (ql-dist:version (ql-dist:dist "quicklisp")))
+           (let ((*standard-output* *error-output*)
+                 (*trace-output* *error-output*))
+             (ql-dist:install-dist (distinfo-url (ql-dist:version ,current-dist)) :prompt nil :replace t)))))))

@@ -23,7 +23,8 @@
                 :components
                 ((:file "quickdocs-extracter" :depends-on ("parser" "data"))
                  (:file "parser")
-                 (:file "data"))))
+                 (:file "data")
+                 (:file "util"))))
   :description "Extracts symbol informations of libraries for Quickdocs API reference"
   :long-description
   #.(with-open-file (stream (merge-pathnames

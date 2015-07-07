@@ -31,13 +31,7 @@
       (error "Release ~S is not found in ~S" release-name dist))
     (list :type :release
           :name release-name
-          :release-version (ql-release-version release)
-          :systems
-          (mapcar (lambda (system)
-                    (serialize-system system dist))
-                  (sort (copy-seq (ql-dist:provided-systems release))
-                        #'string<
-                        :key #'ql-dist:name)))))
+          :release-version (ql-release-version release))))
 
 (defun serialize-system (system-designator &optional (dist (ql-dist:dist "quicklisp")))
   (let ((system (if (typep system-designator 'ql-dist:system)
