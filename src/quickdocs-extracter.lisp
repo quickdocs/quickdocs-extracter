@@ -103,7 +103,10 @@
                                   (node-docstring node)))))
   (:method ((node operator-node))
     (append (call-next-method)
-            (list :lambda-list (serialize-list (operator-lambda-list node)))))
+            (list :lambda-list
+                  (let ((*package* (or (symbol-package (node-name node))
+                                       *package*)))
+                    (prin1-to-string (operator-lambda-list node))))))
   (:method ((node record-node))
     (append (call-next-method)
             (list :slots (mapcar #'serialize-node (record-slots node))))))
@@ -131,7 +134,7 @@
   `(:type :variable
     ,@(call-next-method)
     ,@(if (slot-boundp node 'initial-value)
-          (list :initial-value (variable-node-initial-value node))
+          (list :initial-value (prin1-to-string (variable-node-initial-value node)))
           '())))
 
 (defmethod serialize-node ((node struct-slot-node))

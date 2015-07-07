@@ -7,8 +7,7 @@
            :symb-name
            :symb-package
            :symb-externalp
-           :serialize-symbol
-           :serialize-list))
+           :serialize-symbol))
 (in-package :quickdocs-extracter.data)
 
 (defstruct symb
@@ -27,15 +26,3 @@
            (if package
                (list :externalp (symbol-external-p symbol))
                '()))))
-
-(defun serialize-list (list)
-  (labels ((serialize (item)
-             (typecase item
-               (null nil)
-               (cons (cons (serialize (car item))
-                           (serialize (cdr item))))
-               ((and symbol
-                     (not keyword))
-                (serialize-symbol item))
-               (otherwise item))))
-    (mapcar #'serialize list)))
