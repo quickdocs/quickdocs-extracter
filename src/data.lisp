@@ -34,7 +34,8 @@
 (defun take-until (fn list)
   (let ((pos (position-if fn list)))
     (values (subseq list 0 pos)
-            (subseq list pos))))
+            (and pos
+                 (subseq list pos)))))
 
 (defun serialize-init-form (init-form)
   (prin1-to-string init-form))
@@ -65,5 +66,7 @@
            (let ((var (pop lambda-list)))
              (list elem (serialize-symbol var))))
           (otherwise
-           (list (serialize-symbol elem))))
+           (etypecase elem
+             (symbol (list (serialize-symbol elem)))
+             (list (list (serialize-lambda-list elem))))))
         while lambda-list))

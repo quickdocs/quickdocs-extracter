@@ -39,12 +39,14 @@
       (error "Release ~S is not found in ~S" release-name dist))
     (ql-dist:ensure-installed release)
     (let ((readme-file (readme-file release)))
-      (list :type :release
-            :name release-name
-            :release-version (ql-release-version release)
-            :readme-file (subseq (namestring readme-file)
-                                 (length (namestring (ql-dist:base-directory release))))
-            :readme (uiop:read-file-string readme-file)))))
+      (list* :type :release
+             :name release-name
+             :release-version (ql-release-version release)
+             (if readme-file
+                 `(:readme-file ,(subseq (namestring readme-file)
+                                         (length (namestring (ql-dist:base-directory release))))
+                   :readme ,(uiop:read-file-string readme-file))
+                 '())))))
 
 (defun serialize-system (system-designator &optional (dist (ql-dist:dist "quicklisp")))
   (let ((system (if (typep system-designator 'ql-dist:system)
