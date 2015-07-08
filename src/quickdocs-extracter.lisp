@@ -119,7 +119,7 @@
             (list :lambda-list
                   (let ((*package* (or (symbol-package (node-name node))
                                        *package*)))
-                    (prin1-to-string (operator-lambda-list node))))))
+                    (serialize-lambda-list (operator-lambda-list node))))))
   (:method ((node record-node))
     (append (call-next-method)
             (list :slots (mapcar #'serialize-node (record-slots node))))))
