@@ -102,18 +102,19 @@
             (serialize-extended-lambda-list rest))))
 
 (defun serialize-type-specifier (type-specifier)
-  (if (listp type-specifier)
-      (destructuring-bind (type &rest args) type-specifier
-        (case type
-          ((and or)
-           (list* type
-                  (mapcar #'serialize-type-specifier args)))
-          (not
-           (assert (null (cdr args)))
-           (list 'not (serialize-type-specifier (car args))))
-          (otherwise (list* (serialize-symbol type)
-                            (mapcar #'serialize-init-form args)))))
-      (serialize-symbol type-specifier)))
+  (etypecase type-specifier
+    (null nil)
+    (cons (destructuring-bind (type &rest args) type-specifier
+            (case type
+              ((and or)
+               (list* type
+                      (mapcar #'serialize-type-specifier args)))
+              (not
+               (assert (null (cdr args)))
+               (list 'not (serialize-type-specifier (car args))))
+              (otherwise (list* (serialize-symbol type)
+                                (mapcar #'serialize-init-form args))))))
+    (symbol (serialize-symbol type-specifier))))
 
 (defun serialize-cffi-base-type (cffi-base-type)
   (flet ((convert (type)
