@@ -60,6 +60,12 @@ exec ros -Q -- $0 "$@"
             else if (= input 2) do
               (progn
                 (setf releases (retry-releases ql-dist-version releases-dir errors-dir))
+                (dolist (release releases)
+                  (dolist (dir (list releases-dir
+                                     errors-dir
+                                     logs-dir))
+                    (when (probe-file (merge-pathnames release dir))
+                      (delete-file (merge-pathnames release dir)))))
                 (return))))
     (mapc #'ensure-directories-exist (list releases-dir logs-dir errors-dir))
     (let* ((bt:*default-special-bindings* `((*standard-output* . ,*standard-output*)
