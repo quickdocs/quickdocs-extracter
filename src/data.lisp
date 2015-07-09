@@ -47,8 +47,9 @@
   (typecase type
     (symbol (serialize-symbol type))
     (list
-     (assert (eq (first type) 'eql))
-     (list 'eql (serialize-dirty-object (second type))))
+     (if (eq (first type) 'eql)
+         (list 'eql (serialize-dirty-object (second type)))
+         (serialize-dirty-object type)))
     ;; Unserializable object
     (otherwise
      (serialize-dirty-object type))))
