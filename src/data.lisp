@@ -9,7 +9,9 @@
            :symb-externalp
            :serialize-symbol
            :serialize-lambda-list
-           :serialize-extended-lambda-list))
+           :serialize-extended-lambda-list
+           :serialize-type-specifier
+           :serialize-cffi-base-type))
 (in-package :quickdocs-extracter.data)
 
 (defstruct symb
@@ -98,3 +100,27 @@
                             (list (serialize-symbol var)
                                   (serialize-specializer-name type))))))
             (serialize-extended-lambda-list rest))))
+
+(defun serialize-type-specifier (type-specifier)
+  (if (listp type-specifier)
+      (destructuring-bind (type &rest args) type-specifier
+        (case type
+          ((and or)
+           (list* type
+                  (mapcar #'serialize-type-specifier args)))
+          (not
+           (assert (null (cdr args)))
+           (list 'not (serialize-type-specifier (car args))))
+          (otherwise (list* (serialize-symbol type)
+                            (mapcar #'serialize-init-form args)))))
+      (serialize-symbol type-specifier)))
+
+(defun serialize-cffi-base-type (cffi-base-type)
+  (flet ((convert (type)
+           (typecase type
+             (keyword type)
+             (symbol (serialize-symbol type))
+             (otherwise (serialize-init-form type)))))
+    (if (listp cffi-base-type)
+        (mapcar #'convert cffi-base-type)
+        (convert cffi-base-type))))

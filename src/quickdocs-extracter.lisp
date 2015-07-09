@@ -139,7 +139,11 @@
   `(:type :method
     ,@(call-next-method)
     :setfp ,(operator-setf-p node)
-    :qualifiers ,(method-node-qualifiers node)))
+    :qualifiers ,(mapcar (lambda (qualifier)
+                           (if (keywordp qualifier)
+                               qualifier
+                               (serialize-symbol qualifier)))
+                         (method-node-qualifiers node))))
 
 (defmethod serialize-node ((node generic-function-node))
   `(:type :generic-function
@@ -167,7 +171,7 @@
     :readers   ,(mapcar #'serialize-symbol (slot-readers node))
     :writers   ,(mapcar #'serialize-symbol (slot-writers node))
     :slot-type ,(and (slot-boundp node 'type)
-                     (slot-type node))
+                     (serialize-type-specifier (slot-type node)))
     :allocation ,(slot-allocation node)))
 
 (defmethod serialize-node ((node struct-node))
@@ -198,12 +202,12 @@
 (defmethod serialize-node ((node cffi-type))
   `(:type :cffi-type
     ,@(call-next-method)
-    :base-type ,(cffi-type-base-type node)))
+    :base-type ,(serialize-cffi-base-type (cffi-type-base-type node))))
 
 (defmethod serialize-node ((node cffi-slot))
   `(:type :cffi-slot
     ,@(call-next-method)
-    :slot-type ,(cffi-slot-type node)))
+    :slot-type ,(serialize-type-specifier (cffi-slot-type node))))
 
 (defmethod serialize-node ((node cffi-struct))
   `(:type :cffi-struct
