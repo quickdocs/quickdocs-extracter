@@ -1,0 +1,5 @@
+#!/bin/sh
+
+PROJECT_ROOT=$(dirname $(dirname $0))
+docker build -t quickdocs/quickdocs-extracter-base -f "$PROJECT_ROOT/Dockerfile.base" $PROJECT_ROOT
+exec "$PROJECT_ROOT/scripts/update-docker-image"

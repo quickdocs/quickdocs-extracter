@@ -1,0 +1,4 @@
+#!/bin/sh
+
+PROJECT_ROOT=$(dirname $(dirname $0))
+docker build -t quickdocs/quickdocs-extracter -f "$PROJECT_ROOT/Dockerfile.init" $PROJECT_ROOT

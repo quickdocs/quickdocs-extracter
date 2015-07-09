@@ -1,0 +1,6 @@
+FROM quickdocs/quickdocs-extracter-base
+MAINTAINER Eitaro Fukamachi <e.arrows@gmail.com>
+
+RUN mkdir -p /root/common-lisp
+COPY modules/quickdocs-parser /root/common-lisp/quickdocs-parser
+COPY . /root/common-lisp/quickdocs-extracter
