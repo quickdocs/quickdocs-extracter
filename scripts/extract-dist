@@ -29,8 +29,15 @@ exec ros -Q -- $0 "$@"
                     (not (char= (aref line 0) #\#)))
             collect (first (split-sequence #\Space line :count 1)))))
 
+(defun retry-releases (ql-dist-version releases-dir errors-dir)
+  (labels ((error-release-p (release)
+             (uiop:file-exists-p (merge-pathnames release errors-dir)))
+           (success-release-p (release)
+             (and (uiop:file-exists-p (merge-pathnames release releases-dir))
+                  (not (error-release-p release)))))
+    (remove-if #'success-release-p (ql-releases ql-dist-version))))
+
 (defun main (&optional (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp")))
-               resume-from
              &aux
                (dists-dir (uiop:ensure-directory-pathname
                            (merge-pathnames ql-dist-version #P"dists/")))
@@ -38,41 +45,56 @@ exec ros -Q -- $0 "$@"
                (logs-dir     (merge-pathnames #P"logs/" dists-dir))
                (errors-dir   (merge-pathnames #P"errors/" dists-dir)))
   (format *error-output* "~&Extracting Quicklisp dist ~S to '~A'...~%" ql-dist-version dists-dir)
-  (mapc #'ensure-directories-exist (list releases-dir logs-dir errors-dir))
-  (let* ((releases (ql-releases ql-dist-version))
-         (bt:*default-special-bindings* `((*standard-output* . ,*standard-output*)
-                                          (*error-output* . ,*error-output*)))
-         (failed 0)
-         (cluster (legion:make-cluster *worker-num*
-                     (lambda (worker)
-                       (multiple-value-bind (release existsp)
-                           (legion:next-job worker)
-                         (when existsp
-                           (format t "~&Extracting ~S..." release) (force-output)
-                           (handler-case
-                               (uiop:run-program `("docker" "run" "--rm=true" "-i" "quickdocs/quickdocs-extracter"
-                                                            "bash" "-c"
-                                                            ,(format nil "ros ~~/common-lisp/quickdocs-extracter/scripts/extract-release ~S ~S"
-                                                                     release ql-dist-version))
-                                                 :output (merge-pathnames release releases-dir)
-                                                 :error-output (merge-pathnames release logs-dir)
-                                                 :if-output-exists :supersede
-                                                 :if-error-output-exists :supersede)
-                             (uiop:subprocess-error ()
-                               (let ((error-log (merge-pathnames release errors-dir)))
-                                 (uiop:copy-file (merge-pathnames release logs-dir)
-                                                 error-log)
-                                 (incf failed)
-                                 (format t "failed.~%See '~A' for the detail." error-log))))
-                           (fresh-line))))
-                     :queue-size (1+ (floor (/ (length releases) *worker-num*))))))
-    (when resume-from
-      (setf releases (member resume-from releases :test #'string=)))
-    (dolist (release releases)
-      (legion:add-job cluster release))
-    (legion:start-cluster cluster)
-    (legion:join-worker-threads cluster)
+  (let (releases)
+    (when (uiop:directory-files releases-dir)
+      (format t "~&Directory ~S already exists.~2%  1) Delete all files and continue.~%  2) Retry unprocessed/errored releases.~2%Choose: " dists-dir) (force-output)
+      (loop for input = (read)
+            if (not (and (numberp input)
+                         (or (= input 1) (= input 2))))
+              do (format t "Invalid choice. Input 1 or 2: ") (force-output)
+            else if (= input 1) do
+              (progn
+                (mapc #'uiop:delete-directory-tree (list releases-dir logs-dir errors-dir))
+                (setf releases (ql-releases ql-dist-version))
+                (return))
+            else if (= input 2) do
+              (progn
+                (setf releases (retry-releases ql-dist-version releases-dir errors-dir))
+                (return))))
+    (mapc #'ensure-directories-exist (list releases-dir logs-dir errors-dir))
+    (let* ((bt:*default-special-bindings* `((*standard-output* . ,*standard-output*)
+                                            (*error-output* . ,*error-output*)))
+           (failed 0)
+           (cluster (legion:make-cluster *worker-num*
+                                         (lambda (worker)
+                                           (multiple-value-bind (release existsp)
+                                               (legion:next-job worker)
+                                             (when existsp
+                                               (format t "~&Extracting ~S...~%" release)
+                                               (handler-case
+                                                   (uiop:run-program `("docker" "run" "--rm=true" "-i" "quickdocs/quickdocs-extracter"
+                                                                                "bash" "-c"
+                                                                                ,(format nil "ros ~~/common-lisp/quickdocs-extracter/scripts/extract-release ~S ~S"
+                                                                                         release ql-dist-version))
+                                                                     :output (merge-pathnames release releases-dir)
+                                                                     :error-output (merge-pathnames release logs-dir)
+                                                                     :if-output-exists :supersede
+                                                                     :if-error-output-exists :supersede)
+                                                 (uiop:subprocess-error ()
+                                                   (let ((error-log (merge-pathnames release errors-dir)))
+                                                     (uiop:copy-file (merge-pathnames release logs-dir)
+                                                                     error-log)
+                                                     (incf failed)
+                                                     (format t "~&Failed extracting ~S. See '~A' for the detail.~%"
+                                                             release
+                                                             error-log))))
+                                               (fresh-line))))
+                                         :queue-size (1+ (floor (/ (length releases) *worker-num*))))))
+      (dolist (release releases)
+        (legion:add-job cluster release))
+      (legion:start-cluster cluster)
+      (legion:join-worker-threads cluster)
 
-    (format t "~&~D releases are successfully extracted, and ~D releases are failed.~%"
-            (- (length releases) failed)
-            failed)))
+      (format t "~&~D releases are successfully extracted, and ~D releases are failed.~%"
+              (- (length releases) failed)
+              failed))))
