@@ -85,12 +85,18 @@
            (let ((var (pop lambda-list)))
              (etypecase var
                (symbol (list elem (serialize-symbol var)))
-               (list (list elem (serialize-lambda-list var))))))
+               (list (list elem (serialize-extended-lambda-list var))))))
           (otherwise
            (etypecase elem
              (symbol (list (serialize-symbol elem)))
              (list (list (serialize-extended-lambda-list elem))))))
-        while lambda-list))
+          into results
+        while lambda-list
+        unless (listp lambda-list)
+          do (return
+               (append results
+                       (serialize-symbol lambda-list)))
+        finally (return results)))
 
 (defun serialize-lambda-list (lambda-list)
   (check-type lambda-list list)
