@@ -17,7 +17,9 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
         release-info)
     (with-ql-dist ql-dist-version
       (let ((*standard-output* *error-output*)
-            (*trace-output* *error-output*))
+            (*trace-output* *error-output*)
+            (sb-impl::*default-external-format* :utf-8)
+            (sb-alien::*default-c-string-external-format* :utf-8))
         (setf release-info (quickdocs-extracter:serialize-release name))
         (let ((serialized-systems '()))
           (dolist (system (ql:provided-systems (ql-dist:find-release name)))
