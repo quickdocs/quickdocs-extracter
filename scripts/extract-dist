@@ -31,11 +31,14 @@ exec ros -Q -- $0 "$@"
 
 (defun main (&optional (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp")))
                resume-from
-             &aux (logs-dir #P"logs/") (errors-dir #P"errors/")
-               (result-dir (uiop:ensure-directory-pathname
-                            (merge-pathnames ql-dist-version #P"dists/"))))
-  (format *error-output* "~&Extracting Quicklisp dist ~S to '~A'...~%" ql-dist-version result-dir)
-  (mapc #'ensure-directories-exist (list result-dir logs-dir errors-dir))
+             &aux
+               (dists-dir (uiop:ensure-directory-pathname
+                           (merge-pathnames ql-dist-version #P"dists/")))
+               (releases-dir (merge-pathnames #P"releases/" dists-dir))
+               (logs-dir     (merge-pathnames #P"logs/" dists-dir))
+               (errors-dir   (merge-pathnames #P"errors/" dists-dir)))
+  (format *error-output* "~&Extracting Quicklisp dist ~S to '~A'...~%" ql-dist-version dists-dir)
+  (mapc #'ensure-directories-exist (list releases-dir logs-dir errors-dir))
   (let* ((releases (ql-releases ql-dist-version))
          (bt:*default-special-bindings* `((*standard-output* . ,*standard-output*)
                                           (*error-output* . ,*error-output*)))
@@ -51,7 +54,7 @@ exec ros -Q -- $0 "$@"
                                                             "bash" "-c"
                                                             ,(format nil "ros ~~/common-lisp/quickdocs-extracter/scripts/extract-release ~S ~S"
                                                                      release ql-dist-version))
-                                                 :output (merge-pathnames release result-dir)
+                                                 :output (merge-pathnames release releases-dir)
                                                  :error-output (merge-pathnames release logs-dir)
                                                  :if-output-exists :supersede
                                                  :if-error-output-exists :supersede)
