@@ -44,11 +44,14 @@
   (prin1-to-string init-form))
 
 (defun serialize-specializer-name (type)
-  (etypecase type
+  (typecase type
     (symbol (serialize-symbol type))
     (list
      (assert (eq (first type) 'eql))
-     (list 'eql (serialize-init-form (second type))))))
+     (list 'eql (serialize-init-form (second type))))
+    ;; Unserializable object
+    (otherwise
+     (serialize-init-form type))))
 
 (defun serialize-extended-lambda-list (lambda-list)
   (check-type lambda-list list)
