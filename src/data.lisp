@@ -40,11 +40,20 @@
 (defun serialize-init-form (init-form)
   (prin1-to-string init-form))
 
-(defun serialize-lambda-list (lambda-list)
+(defun serialize-specializer-name (type)
+  (etypecase type
+    (symbol (serialize-symbol type))
+    (list
+     (assert (eq (first type) 'eql))
+     (list 'eql (serialize-init-form (second type))))))
+
+(defun serialize-ordinary-lambda-list (lambda-list)
   (check-type lambda-list list)
+  (unless lambda-list
+    (return-from serialize-ordinary-lambda-list nil))
   (loop for elem = (pop lambda-list)
         append
-        (case elem
+        (ecase elem
           (&allow-other-keys (list '&allow-other-keys))
           ((&optional &key &aux)
            (cons elem
@@ -53,20 +62,34 @@
                    (setf lambda-list rest)
                    (loop for optional in optionals
                          if (consp optional)
-                           collect (ecase (length optional)
-                                     (1 (list (serialize-symbol (first optional))))
-                                     (2 (list (serialize-symbol (first optional))
-                                              (serialize-init-form (second optional))))
-                                     (3 (list (serialize-symbol (first optional))
-                                              (serialize-init-form (second optional))
-                                              (serialize-symbol (third optional)))))
+                           collect
+                           (let ((var (first optional)))
+                             (append
+                              (list (etypecase var
+                                      (symbol (serialize-symbol var))
+                                      (list (mapcar #'serialize-symbol var))))
+                              (ecase (length optional)
+                                (1 nil)
+                                (2 (list (serialize-init-form (second optional))))
+                                (3 (list (serialize-init-form (second optional))
+                                         (serialize-symbol (third optional)))))))
                          else
                            collect (serialize-symbol optional)))))
           ((&rest &body &whole &environment)
            (let ((var (pop lambda-list)))
-             (list elem (serialize-symbol var))))
-          (otherwise
-           (etypecase elem
-             (symbol (list (serialize-symbol elem)))
-             (list (list (serialize-lambda-list elem))))))
+             (etypecase var
+               (symbol (list elem (serialize-symbol var)))
+               (list (list elem (serialize-ordinary-lambda-list var)))))))
         while lambda-list))
+
+(defun serialize-lambda-list (lambda-list)
+  (check-type lambda-list list)
+  (multiple-value-bind (args rest) (take-until #'&-symbol-p lambda-list)
+    (append (loop for arg in args
+                  collect
+                  (etypecase arg
+                    (symbol (serialize-symbol arg))
+                    (list (destructuring-bind (var type) arg
+                            (list (serialize-symbol var)
+                                  (serialize-specializer-name type))))))
+            (serialize-ordinary-lambda-list rest))))
