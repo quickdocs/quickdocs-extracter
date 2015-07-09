@@ -121,7 +121,11 @@
             (list :lambda-list
                   (let ((*package* (or (symbol-package (node-name node))
                                        *package*)))
-                    (serialize-lambda-list (operator-lambda-list node))))))
+                    (funcall
+                     (if (typep node 'macro-node)
+                         #'serialize-extended-lambda-list
+                         #'serialize-lambda-list)
+                     (operator-lambda-list node))))))
   (:method ((node record-node))
     (append (call-next-method)
             (list :slots (mapcar #'serialize-node (record-slots node))))))

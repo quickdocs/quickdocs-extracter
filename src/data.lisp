@@ -8,7 +8,8 @@
            :symb-package
            :symb-externalp
            :serialize-symbol
-           :serialize-lambda-list))
+           :serialize-lambda-list
+           :serialize-extended-lambda-list))
 (in-package :quickdocs-extracter.data)
 
 (defstruct symb
@@ -47,13 +48,13 @@
      (assert (eq (first type) 'eql))
      (list 'eql (serialize-init-form (second type))))))
 
-(defun serialize-ordinary-lambda-list (lambda-list)
+(defun serialize-extended-lambda-list (lambda-list)
   (check-type lambda-list list)
   (unless lambda-list
-    (return-from serialize-ordinary-lambda-list nil))
+    (return-from serialize-extended-lambda-list nil))
   (loop for elem = (pop lambda-list)
         append
-        (ecase elem
+        (case elem
           (&allow-other-keys (list '&allow-other-keys))
           ((&optional &key &aux)
            (cons elem
@@ -79,7 +80,11 @@
            (let ((var (pop lambda-list)))
              (etypecase var
                (symbol (list elem (serialize-symbol var)))
-               (list (list elem (serialize-ordinary-lambda-list var)))))))
+               (list (list elem (serialize-lambda-list var))))))
+          (otherwise
+           (etypecase elem
+             (symbol (list (serialize-symbol elem)))
+             (list (list (serialize-extended-lambda-list elem))))))
         while lambda-list))
 
 (defun serialize-lambda-list (lambda-list)
@@ -92,4 +97,4 @@
                     (list (destructuring-bind (var type) arg
                             (list (serialize-symbol var)
                                   (serialize-specializer-name type))))))
-            (serialize-ordinary-lambda-list rest))))
+            (serialize-extended-lambda-list rest))))
