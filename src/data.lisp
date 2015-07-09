@@ -40,7 +40,7 @@
             (and pos
                  (subseq list pos)))))
 
-(defun serialize-init-form (init-form)
+(defun serialize-dirty-object (init-form)
   (prin1-to-string init-form))
 
 (defun serialize-specializer-name (type)
@@ -48,10 +48,10 @@
     (symbol (serialize-symbol type))
     (list
      (assert (eq (first type) 'eql))
-     (list 'eql (serialize-init-form (second type))))
+     (list 'eql (serialize-dirty-object (second type))))
     ;; Unserializable object
     (otherwise
-     (serialize-init-form type))))
+     (serialize-dirty-object type))))
 
 (defun serialize-extended-lambda-list (lambda-list)
   (check-type lambda-list list)
@@ -76,8 +76,8 @@
                                       (list (mapcar #'serialize-symbol var))))
                               (ecase (length optional)
                                 (1 nil)
-                                (2 (list (serialize-init-form (second optional))))
-                                (3 (list (serialize-init-form (second optional))
+                                (2 (list (serialize-dirty-object (second optional))))
+                                (3 (list (serialize-dirty-object (second optional))
                                          (serialize-symbol (third optional)))))))
                          else
                            collect (serialize-symbol optional)))))
@@ -116,7 +116,7 @@
                (assert (null (cdr args)))
                (list 'not (serialize-type-specifier (car args))))
               (otherwise (list* (serialize-symbol type)
-                                (mapcar #'serialize-init-form args))))))
+                                (mapcar #'serialize-dirty-object args))))))
     (symbol (serialize-symbol type-specifier))))
 
 (defun serialize-anything (obj)
@@ -124,4 +124,4 @@
     (list (mapcar #'serialize-anything obj))
     (keyword obj)
     (symbol (serialize-symbol obj))
-    (otherwise (serialize-init-form obj))))
+    (otherwise (serialize-dirty-object obj))))
