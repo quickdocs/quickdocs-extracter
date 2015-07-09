@@ -47,7 +47,7 @@ exec ros -Q -- $0 "$@"
                          (when existsp
                            (format t "~&Extracting ~S..." release) (force-output)
                            (handler-case
-                               (uiop:run-program `("docker" "run" "-i" "quickdocs/quickdocs-extracter"
+                               (uiop:run-program `("docker" "run" "-i" "quickdocs/quickdocs-extracter" "--rm"
                                                             "bash" "-c"
                                                             ,(format nil "ros ~~/common-lisp/quickdocs-extracter/scripts/extract-release ~S ~S"
                                                                      release ql-dist-version))
