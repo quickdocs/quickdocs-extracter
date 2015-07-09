@@ -11,7 +11,7 @@
            :serialize-lambda-list
            :serialize-extended-lambda-list
            :serialize-type-specifier
-           :serialize-cffi-base-type))
+           :serialize-anything))
 (in-package :quickdocs-extracter.data)
 
 (defstruct symb
@@ -116,12 +116,9 @@
                                 (mapcar #'serialize-init-form args))))))
     (symbol (serialize-symbol type-specifier))))
 
-(defun serialize-cffi-base-type (cffi-base-type)
-  (flet ((convert (type)
-           (typecase type
-             (keyword type)
-             (symbol (serialize-symbol type))
-             (otherwise (serialize-init-form type)))))
-    (if (listp cffi-base-type)
-        (mapcar #'convert cffi-base-type)
-        (convert cffi-base-type))))
+(defun serialize-anything (obj)
+  (typecase obj
+    (list (mapcar #'serialize-anything obj))
+    (keyword obj)
+    (symbol (serialize-symbol obj))
+    (otherwise (serialize-init-form obj))))

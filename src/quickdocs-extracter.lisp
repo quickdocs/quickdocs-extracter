@@ -197,12 +197,12 @@
   (let ((result (call-next-method)))
     (setf (getf result :type) :cffi-function)
     (append result
-            (list :return-type (cffi-function-return-type node)))))
+            (list :return-type (serialize-anything (cffi-function-return-type node))))))
 
 (defmethod serialize-node ((node cffi-type))
   `(:type :cffi-type
     ,@(call-next-method)
-    :base-type ,(serialize-cffi-base-type (cffi-type-base-type node))))
+    :base-type ,(serialize-anything (cffi-type-base-type node))))
 
 (defmethod serialize-node ((node cffi-slot))
   `(:type :cffi-slot
