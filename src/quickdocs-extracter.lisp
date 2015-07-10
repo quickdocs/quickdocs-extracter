@@ -55,11 +55,18 @@
         asdf-system)
     (unless system
       (error "System ~S is not found in ~S" system-designator dist))
-    (let ((index (parse (ql-dist:name system)))
-          packages)
-      (do-packages (package index)
-        (push (serialize-package package) packages))
-      (setf packages (nreverse packages))
+    (let (index failed error-log packages)
+      (handler-case
+          (progn
+            (setf index (parse (ql-dist:name system)))
+            (do-packages (package index)
+              (push (serialize-package package) packages))
+            (setf packages (nreverse packages)))
+        (error (e)
+          (setf failed t
+                error-log (princ-to-string e))
+          (princ e *error-output*)))
+
       (flet ((ignorable-dependency-p (dep)
                (or
                 #+sbcl (and (<= 3 (length (string dep)))
@@ -72,29 +79,41 @@
                        (error "Unexpected :depends-on: ~S" dep))
                      (second dep))
                    dep)))
-        (setf asdf-system (asdf:find-system (ql-dist:name system)))
-        (list :type :system
-              :name (ql-dist:name system)
-              :long-name (asdf:system-long-name asdf-system)
-              :author (asdf:system-author asdf-system)
-              :maintainer (asdf:system-maintainer asdf-system)
-              :version (asdf:component-version asdf-system)
-              :license (asdf:system-license asdf-system)
-              :homepage (asdf:system-homepage asdf-system)
-              :bug-tracker (asdf:system-bug-tracker asdf-system)
-              :mailto (asdf:system-mailto asdf-system)
-              :description (asdf:system-description asdf-system)
-              :long-description (asdf:system-long-description asdf-system)
-              ;; NOTE: Not using ql::required-systems because it's in random order.
-              :depends-on (mapcar #'string-downcase
-                                  (remove-if #'ignorable-dependency-p
-                                             (mapcar #'dependency-name
-                                                     (asdf:component-sideway-dependencies asdf-system))))
-              :defsystem-depends-on (mapcar #'string-downcase
-                                            (remove-if #'ignorable-dependency-p
-                                                       (mapcar #'dependency-name
-                                                               (asdf:system-defsystem-depends-on asdf-system))))
-              :packages packages)))))
+        (handler-case
+            (progn
+              (setf asdf-system (asdf:find-system (ql-dist:name system)))
+              (append
+               (list :type :system
+                     :name (ql-dist:name system)
+                     :long-name (asdf:system-long-name asdf-system)
+                     :author (asdf:system-author asdf-system)
+                     :maintainer (asdf:system-maintainer asdf-system)
+                     :version (asdf:component-version asdf-system)
+                     :license (asdf:system-license asdf-system)
+                     :homepage (asdf:system-homepage asdf-system)
+                     :bug-tracker (asdf:system-bug-tracker asdf-system)
+                     :mailto (asdf:system-mailto asdf-system)
+                     :description (asdf:system-description asdf-system)
+                     :long-description (asdf:system-long-description asdf-system)
+                     ;; NOTE: Not using ql::required-systems because it's in random order.
+                     :depends-on (mapcar #'string-downcase
+                                         (remove-if #'ignorable-dependency-p
+                                                    (mapcar #'dependency-name
+                                                            (asdf:component-sideway-dependencies asdf-system))))
+                     :defsystem-depends-on (mapcar #'string-downcase
+                                                   (remove-if #'ignorable-dependency-p
+                                                              (mapcar #'dependency-name
+                                                                      (asdf:system-defsystem-depends-on asdf-system)))))
+               (if failed
+                   (list :failed t
+                         :error-log error-log)
+                   '())))
+          (error (e)
+            (princ e *error-output*)
+            (list :type :system
+                  :name (ql-dist:name system)
+                  :failed t
+                  :error-log (princ-to-string e))))))))
 
 (defun serialize-package (package)
   (check-type package package-index)
