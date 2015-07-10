@@ -48,10 +48,12 @@ exec ros -Q -- $0 "$@"
   (format *error-output* "~&Extracting Quicklisp dist ~S to '~A'...~%" ql-dist-version dists-dir)
   (let (releases)
     (when (uiop:directory-exists-p dists-dir)
-      (ecase (intern if-exists :keyword)
+      (ecase (intern (string-upcase if-exists) :keyword)
         (:error (error "Directory '~A' already exists." dists-dir))
         (:delete-and-retry
-         (mapc #'uiop:delete-directory-tree (list releases-dir logs-dir errors-dir))
+         (mapc (lambda (dir)
+                 (uiop:delete-directory-tree dir :validate t))
+               (list releases-dir logs-dir errors-dir))
          (setf releases (ql-releases ql-dist-version)))
         (:retry-only-errors
          (setf releases (retry-releases ql-dist-version releases-dir errors-dir))
