@@ -52,11 +52,14 @@ exec ros -Q -- $0 "$@"
         (:error (error "Directory '~A' already exists." dists-dir))
         (:delete-and-retry
          (mapc (lambda (dir)
+                 (format *error-output* "~&Deleting '~A'...~%" dir)
                  (uiop:delete-directory-tree dir :validate t))
                (list releases-dir logs-dir errors-dir))
          (setf releases (ql-releases ql-dist-version)))
         (:retry-only-errors
          (setf releases (retry-releases ql-dist-version releases-dir errors-dir))
+         (format *error-output* "~&Retrying ~D releases...~%"
+                 (length releases))
          (dolist (release releases)
            (dolist (dir (list releases-dir
                               errors-dir

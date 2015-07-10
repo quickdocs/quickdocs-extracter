@@ -24,22 +24,30 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
         (let ((serialized-systems '()))
           (dolist (system (ql:provided-systems (ql-dist:find-release name)))
             (handler-case
-                (push (read-from-string
-                       (with-output-to-string (s)
-                         (uiop:run-program `(#+darwin "gtimeout"
-                                             #-darwin "timeout"
-                                             "5m"
-                                             ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
-                                             ,(ql-dist:name system) ,ql-dist-version)
-                                           :output s
-                                           :error-output *error-output*)))
-                      serialized-systems)
+                (let ((system
+                        (read-from-string
+                         (with-output-to-string (s)
+                           (uiop:run-program `(#+darwin "gtimeout"
+                                               #-darwin "timeout"
+                                               "5m"
+                                               ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
+                                               ,(ql-dist:name system) ,ql-dist-version)
+                                             :output s
+                                             :error-output *error-output*)))))
+                  (when (getf system :failed)
+                    (setf failed t))
+                  (push system serialized-systems))
               (uiop:subprocess-error (e)
                 (setf failed t)
-                (if (= (uiop:subprocess-error-code e) 124)
-                    ;; timeout
-                    (format *error-output* "~&Timeout.~2%")
-                    (format *error-output* "~&~A~2%" e)))))
+                (let ((error-log
+                        (if (= (uiop:subprocess-error-code e) 124)
+                            "Timeout."
+                            (princ-to-string e))))
+                  (push (list :type :system
+                              :name (ql-dist:name system)
+                              :failed t
+                              :error-log error-log)
+                        serialized-systems)))))
           (setf (getf release-info :systems) serialized-systems))))
     (prin1 release-info)
     (uiop:quit (if failed -1 0))))
