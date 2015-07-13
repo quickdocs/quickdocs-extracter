@@ -23,19 +23,22 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
         (setf release-info (quickdocs-extracter:serialize-release name))
         (let ((serialized-systems '()))
           (dolist (system (ql:provided-systems (ql-dist:find-release name)))
-            (multiple-value-bind (out errout exit-code)
-                (uiop:run-program `(#+darwin "gtimeout"
-                                    #-darwin "timeout"
-                                    "5m"
-                                    ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
-                                    ,(ql-dist:name system) ,ql-dist-version)
-                                  :error-output *error-output*
-                                  :ignore-error-status t)
-              (declare (ignore errout))
+            (let* ((out (make-string-output-stream))
+                   (exit-code
+                     (nth-value
+                      2
+                      (uiop:run-program `(#+darwin "gtimeout"
+                                          #-darwin "timeout"
+                                          "5m"
+                                          ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
+                                          ,(ql-dist:name system) ,ql-dist-version)
+                                        :output out
+                                        :error-output *error-output*
+                                        :ignore-error-status t))))
               (cond
                 (;; success
                  (= exit-code 0)
-                 (let ((system (read-from-string out)))
+                 (let ((system (read-from-string (get-output-stream-string out))))
                    (when (getf system :failed)
                      (setf failed t))
                    (push system serialized-systems)))
