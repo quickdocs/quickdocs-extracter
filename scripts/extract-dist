@@ -10,7 +10,7 @@ exec ros -Q -- $0 "$@"
 
 (import 'split-sequence:split-sequence)
 
-(defvar *worker-num* 4)
+(defvar *worker-num* 2)
 
 (defun download-ql-releases (ql-dist-version)
   (let ((url
