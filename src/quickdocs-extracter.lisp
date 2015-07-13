@@ -128,11 +128,9 @@
 (defun get-system-basic-info (system-name &optional (dist (ql-dist:dist "quicklisp")))
   (check-type system-name string)
   (labels ((tree-ensure-installed (tree)
-             (loop for obj in tree
-                   if (consp obj)
-                     do (mapc #'tree-ensure-installed obj)
-                   else
-                     do (ql-dist:ensure-installed obj)))
+             (if (consp tree)
+                 (mapc #'tree-ensure-installed tree)
+                 (ql-dist:ensure-installed tree)))
            (ignorable-dependency-p (dep)
              (or
               #+sbcl (and (<= 3 (length (string dep)))
@@ -145,7 +143,6 @@
                      (error "Unexpected :depends-on: ~S" dep))
                    (second dep))
                  dep)))
-    (tree-ensure-installed (ql-dist:dependency-tree system))
     (let* ((system (find-system-in-dist system-name dist))
            (asdf-system
              (handler-case (asdf:find-system (ql-dist:name system))
@@ -154,6 +151,7 @@
                        :name (ql-dist:name system)
                        :failed t
                        :error-log (princ-to-string e))))))
+      (tree-ensure-installed (ql-dist:dependency-tree system))
       (list :type :system
             :name             (canonicalize-string (ql-dist:name system))
             :long-name        (canonicalize-string (asdf:system-long-name asdf-system))
