@@ -48,6 +48,62 @@
                    :readme ,(uiop:read-file-string readme-file))
                  '())))))
 
+(defun normalize-author-and-maintainer (author)
+  (typecase author
+    (string author)
+    (null author)
+    (cons
+     (mapcar (lambda (a)
+               (if (stringp a)
+                   a
+                   (progn
+                     (warn "~S in ~S is unexpected type for :author (or :maintainer). Just converting into a string."
+                           a
+                           author)
+                     (princ-to-string a))))
+             ;; Some library specifies a quoted list. (ex. '("Scott McKay") in cl-protobufs)
+             (if (eq (car author) 'quote)
+                 (second author)
+                 author)))
+    (otherwise
+     (warn "~S is unexpected type for :author (or :maintainer). Just converting into a string."
+           author)
+     (princ-to-string author))))
+
+(defun canonicalize-multi-strings (object)
+  "Returns a string or a list of strings"
+  (typecase object
+    (string object)
+    (null '())
+    (cons
+     (mapcar (lambda (obj)
+               (if (stringp obj)
+                   obj
+                   (progn
+                     (warn "~S in ~S cannot be canonicalized as multi-strings. Just converting into a string."
+                           obj
+                           object)
+                     (princ-to-string obj))))
+             ;; Some library specifies a quoted list. (ex. '("Scott McKay") in cl-protobufs)
+             (if (eq (car object) 'quote)
+                 (second object)
+                 object)))
+    (otherwise
+     (warn "~S cannot be canonicalized as multi-strings. Just converting into a string."
+           object)
+     (princ-to-string object))))
+
+(defun canonicalize-string (object)
+  "Returns a string or NIL"
+  (typecase object
+    (string object)
+    (null nil)
+    (cons (format nil "~{~A~^~%~}" object))
+    (otherwise
+     (warn "~S cannot be canonicalized as a string. Just converting into a string."
+           object)
+     (princ-to-string object))))
+
 (defun serialize-system (system-designator &optional (dist (ql-dist:dist "quicklisp")))
   (let ((system (if (typep system-designator 'ql-dist:system)
                     system-designator
@@ -84,17 +140,17 @@
               (setf asdf-system (asdf:find-system (ql-dist:name system)))
               (append
                (list :type :system
-                     :name (ql-dist:name system)
-                     :long-name (asdf:system-long-name asdf-system)
-                     :author (asdf:system-author asdf-system)
-                     :maintainer (asdf:system-maintainer asdf-system)
-                     :version (asdf:component-version asdf-system)
-                     :license (asdf:system-license asdf-system)
-                     :homepage (asdf:system-homepage asdf-system)
-                     :bug-tracker (asdf:system-bug-tracker asdf-system)
-                     :mailto (asdf:system-mailto asdf-system)
-                     :description (asdf:system-description asdf-system)
-                     :long-description (asdf:system-long-description asdf-system)
+                     :name             (canonicalize-string (ql-dist:name system))
+                     :long-name        (canonicalize-string (asdf:system-long-name asdf-system))
+                     :author           (canonicalize-multi-strings (asdf:system-author asdf-system))
+                     :maintainer       (canonicalize-multi-strings (asdf:system-maintainer asdf-system))
+                     :version          (canonicalize-string (asdf:component-version asdf-system))
+                     :license          (canonicalize-string (asdf:system-license asdf-system))
+                     :homepage         (canonicalize-string (asdf:system-homepage asdf-system))
+                     :bug-tracker      (canonicalize-string (asdf:system-bug-tracker asdf-system))
+                     :mailto           (canonicalize-string (asdf:system-mailto asdf-system))
+                     :description      (canonicalize-string (asdf:system-description asdf-system))
+                     :long-description (canonicalize-string (asdf:system-long-description asdf-system))
                      ;; NOTE: Not using ql::required-systems because it's in random order.
                      :depends-on (mapcar #'string-downcase
                                          (remove-if #'ignorable-dependency-p
