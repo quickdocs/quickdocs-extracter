@@ -46,7 +46,19 @@
              (if readme-file
                  `(:readme-file ,(subseq (namestring readme-file)
                                          (length (namestring (ql-dist:base-directory release))))
-                   :readme ,(uiop:read-file-string readme-file))
+                   :readme
+                   ,(handler-bind
+                        ((error (lambda (e)
+                                  (declare (ignorable e))
+                                  #+sbcl
+                                  (let ((restart (find-restart 'sb-impl::input-replacement)))
+                                    (when restart
+                                      (invoke-restart restart
+                                                      (or (ignore-errors
+                                                           (code-char
+                                                            (aref (sb-int:character-decoding-error-octets e) 0)))
+                                                          #\?)))))))
+                      (uiop:read-file-string readme-file)))
                  '())))))
 
 (defun normalize-author-and-maintainer (author)
