@@ -8,7 +8,8 @@
                           :variable-node
                           :method-node)
   (:export :serialize-release
-           :serialize-system))
+           :serialize-system
+           :get-system-basic-info))
 (in-package :quickdocs-extracter)
 
 (defun ql-release-version (release)
@@ -104,72 +105,73 @@
            object)
      (princ-to-string object))))
 
-(defun serialize-system (system-designator &optional (dist (ql-dist:dist "quicklisp")))
+(defun find-system-in-dist (system-designator dist)
   (let ((system (if (typep system-designator 'ql-dist:system)
                     system-designator
-                    (ql-dist:find-system-in-dist system-designator dist)))
-        asdf-system)
+                    (ql-dist:find-system-in-dist system-designator dist))))
     (unless system
       (error "System ~S is not found in ~S" system-designator dist))
-    (let (index failed error-log packages)
-      (handler-case
-          (progn
-            (setf index (parse (ql-dist:name system)))
-            (do-packages (package index)
-              (push (serialize-package package) packages))
-            (setf packages (nreverse packages)))
-        (error (e)
-          (setf failed t
-                error-log (princ-to-string e))
-          (princ e *error-output*)))
+    system))
 
-      (flet ((ignorable-dependency-p (dep)
-               (or
-                #+sbcl (and (<= 3 (length (string dep)))
-                            (string-equal dep "sb-" :end1 3))
-                (string-equal dep :asdf)))
-             (dependency-name (dep)
-               (if (listp dep)
-                   (progn
-                     (unless (eq (first dep) :version)
-                       (error "Unexpected :depends-on: ~S" dep))
-                     (second dep))
-                   dep)))
-        (handler-case
-            (progn
-              (setf asdf-system (asdf:find-system (ql-dist:name system)))
-              (append
-               (list :type :system
-                     :name             (canonicalize-string (ql-dist:name system))
-                     :long-name        (canonicalize-string (asdf:system-long-name asdf-system))
-                     :author           (canonicalize-multi-strings (asdf:system-author asdf-system))
-                     :maintainer       (canonicalize-multi-strings (asdf:system-maintainer asdf-system))
-                     :version          (canonicalize-string (asdf:component-version asdf-system))
-                     :license          (canonicalize-string (asdf:system-license asdf-system))
-                     :homepage         (canonicalize-string (asdf:system-homepage asdf-system))
-                     :bug-tracker      (canonicalize-string (asdf:system-bug-tracker asdf-system))
-                     :mailto           (canonicalize-string (asdf:system-mailto asdf-system))
-                     :description      (canonicalize-string (asdf:system-description asdf-system))
-                     :long-description (canonicalize-string (asdf:system-long-description asdf-system))
-                     ;; NOTE: Not using ql::required-systems because it's in random order.
-                     :depends-on (mapcar #'string-downcase
-                                         (remove-if #'ignorable-dependency-p
-                                                    (mapcar #'dependency-name
-                                                            (asdf:component-sideway-dependencies asdf-system))))
-                     :defsystem-depends-on (mapcar #'string-downcase
-                                                   (remove-if #'ignorable-dependency-p
-                                                              (mapcar #'dependency-name
-                                                                      (asdf:system-defsystem-depends-on asdf-system)))))
-               (if failed
-                   (list :failed t
-                         :error-log error-log)
-                   '())))
-          (error (e)
-            (princ e *error-output*)
-            (list :type :system
-                  :name (ql-dist:name system)
-                  :failed t
-                  :error-log (princ-to-string e))))))))
+(defun get-system-basic-info (system-name &optional (dist (ql-dist:dist "quicklisp")))
+  (check-type system-name string)
+  (labels ((tree-ensure-installed (tree)
+             (loop for obj in tree
+                   if (consp obj)
+                     do (mapc #'tree-ensure-installed obj)
+                   else
+                     do (ql-dist:ensure-installed obj)))
+           (ignorable-dependency-p (dep)
+             (or
+              #+sbcl (and (<= 3 (length (string dep)))
+                          (string-equal dep "sb-" :end1 3))
+              (string-equal dep :asdf)))
+           (dependency-name (dep)
+             (if (listp dep)
+                 (progn
+                   (unless (eq (first dep) :version)
+                     (error "Unexpected :depends-on: ~S" dep))
+                   (second dep))
+                 dep)))
+    (tree-ensure-installed (ql-dist:dependency-tree system))
+    (let* ((system (find-system-in-dist system-name dist))
+           (asdf-system
+             (handler-case (asdf:find-system (ql-dist:name system))
+               (error (e)
+                 (list :type :system
+                       :name (ql-dist:name system)
+                       :failed t
+                       :error-log (princ-to-string e))))))
+      (list :type :system
+            :name             (canonicalize-string (ql-dist:name system))
+            :long-name        (canonicalize-string (asdf:system-long-name asdf-system))
+            :author           (canonicalize-multi-strings (asdf:system-author asdf-system))
+            :maintainer       (canonicalize-multi-strings (asdf:system-maintainer asdf-system))
+            :version          (canonicalize-string (asdf:component-version asdf-system))
+            :license          (canonicalize-string (asdf:system-license asdf-system))
+            :homepage         (canonicalize-string (asdf:system-homepage asdf-system))
+            :bug-tracker      (canonicalize-string (asdf:system-bug-tracker asdf-system))
+            :mailto           (canonicalize-string (asdf:system-mailto asdf-system))
+            :description      (canonicalize-string (asdf:system-description asdf-system))
+            :long-description (canonicalize-string (asdf:system-long-description asdf-system))
+            ;; NOTE: Not using ql::required-systems because it's in random order.
+            :depends-on (mapcar #'string-downcase
+                                (remove-if #'ignorable-dependency-p
+                                           (mapcar #'dependency-name
+                                                   (asdf:component-sideway-dependencies asdf-system))))
+            :defsystem-depends-on (mapcar #'string-downcase
+                                          (remove-if #'ignorable-dependency-p
+                                                     (mapcar #'dependency-name
+                                                             (asdf:system-defsystem-depends-on asdf-system))))))))
+
+(defun serialize-system (system-designator &optional (dist (ql-dist:dist "quicklisp")))
+  (let ((system (find-system-in-dist system-designator dist)))
+    (append (get-system-basic-info (ql-dist:name system) dist)
+            (let ((index (parse (ql-dist:name system)))
+                  packages)
+              (do-packages (package index)
+                (push (serialize-package package) packages))
+              (list :packages (nreverse packages))))))
 
 (defun serialize-package (package)
   (check-type package package-index)

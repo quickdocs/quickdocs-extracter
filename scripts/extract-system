@@ -14,8 +14,26 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
     (uiop:quit -1))
   
   (let ((sb-impl::*default-external-format* :utf-8)
-        (sb-alien::*default-c-string-external-format* :utf-8))
+        (sb-alien::*default-c-string-external-format* :utf-8)
+        (stdout *standard-output*))
     (with-ql-dist ql-dist-version
-      (prin1 (let ((*standard-output* *error-output*)
-                   (*trace-output* *error-output*))
-               (quickdocs-extracter:serialize-system name))))))
+      (flet ((prin1-to-stdout (obj)
+               (prin1 obj stdout)))
+        (prin1-to-stdout
+         (let ((*standard-output* *error-output*)
+               (*trace-output* *error-output*))
+           (handler-bind ((error
+                            (lambda (e)
+                              (handler-bind ((error
+                                               (lambda (e)
+                                                 (prin1-to-stdout
+                                                  (list :type :system
+                                                        :name name
+                                                        :failed t
+                                                        :error-log (princ-to-string e))))))
+                                ;; In case that parsing has failed.
+                                (prin1-to-stdout
+                                 (append (quickdocs-extracter:get-system-basic-info name)
+                                         (list :failed t
+                                               :error-log (princ-to-string e))))))))
+             (quickdocs-extracter:serialize-system name))))))))
