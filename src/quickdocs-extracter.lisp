@@ -143,36 +143,37 @@
                      (error "Unexpected :depends-on: ~S" dep))
                    (second dep))
                  dep)))
-    (let* ((system (find-system-in-dist system-name dist))
-           (asdf-system
-             (handler-case (asdf:find-system (ql-dist:name system))
-               (error (e)
-                 (list :type :system
-                       :name (ql-dist:name system)
-                       :failed t
-                       :error-log (princ-to-string e))))))
+    (let ((system (find-system-in-dist system-name dist)))
       (tree-ensure-installed (ql-dist:dependency-tree system))
-      (list :type :system
-            :name             (canonicalize-string (ql-dist:name system))
-            :long-name        (canonicalize-string (asdf:system-long-name asdf-system))
-            :author           (canonicalize-multi-strings (asdf:system-author asdf-system))
-            :maintainer       (canonicalize-multi-strings (asdf:system-maintainer asdf-system))
-            :version          (canonicalize-string (asdf:component-version asdf-system))
-            :license          (canonicalize-string (asdf:system-license asdf-system))
-            :homepage         (canonicalize-string (asdf:system-homepage asdf-system))
-            :bug-tracker      (canonicalize-string (asdf:system-bug-tracker asdf-system))
-            :mailto           (canonicalize-string (asdf:system-mailto asdf-system))
-            :description      (canonicalize-string (asdf:system-description asdf-system))
-            :long-description (canonicalize-string (asdf:system-long-description asdf-system))
-            ;; NOTE: Not using ql::required-systems because it's in random order.
-            :depends-on (mapcar #'string-downcase
-                                (remove-if #'ignorable-dependency-p
-                                           (mapcar #'dependency-name
-                                                   (asdf:component-sideway-dependencies asdf-system))))
-            :defsystem-depends-on (mapcar #'string-downcase
-                                          (remove-if #'ignorable-dependency-p
-                                                     (mapcar #'dependency-name
-                                                             (asdf:system-defsystem-depends-on asdf-system))))))))
+      (let ((asdf-system
+              (handler-case (asdf:find-system (ql-dist:name system))
+                (error (e)
+                  (return-from get-system-basic-info
+                    (list :type :system
+                          :name (ql-dist:name system)
+                          :failed t
+                          :error-log (princ-to-string e)))))))
+        (list :type :system
+              :name             (canonicalize-string (ql-dist:name system))
+              :long-name        (canonicalize-string (asdf:system-long-name asdf-system))
+              :author           (canonicalize-multi-strings (asdf:system-author asdf-system))
+              :maintainer       (canonicalize-multi-strings (asdf:system-maintainer asdf-system))
+              :version          (canonicalize-string (asdf:component-version asdf-system))
+              :license          (canonicalize-string (asdf:system-license asdf-system))
+              :homepage         (canonicalize-string (asdf:system-homepage asdf-system))
+              :bug-tracker      (canonicalize-string (asdf:system-bug-tracker asdf-system))
+              :mailto           (canonicalize-string (asdf:system-mailto asdf-system))
+              :description      (canonicalize-string (asdf:system-description asdf-system))
+              :long-description (canonicalize-string (asdf:system-long-description asdf-system))
+              ;; NOTE: Not using ql::required-systems because it's in random order.
+              :depends-on (mapcar #'string-downcase
+                                  (remove-if #'ignorable-dependency-p
+                                             (mapcar #'dependency-name
+                                                     (asdf:component-sideway-dependencies asdf-system))))
+              :defsystem-depends-on (mapcar #'string-downcase
+                                            (remove-if #'ignorable-dependency-p
+                                                       (mapcar #'dependency-name
+                                                               (asdf:system-defsystem-depends-on asdf-system)))))))))
 
 (defun serialize-system (system-designator &optional (dist (ql-dist:dist "quicklisp")))
   (let ((system (find-system-in-dist system-designator dist)))
