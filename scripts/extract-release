@@ -23,31 +23,31 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
         (setf release-info (quickdocs-extracter:serialize-release name))
         (let ((serialized-systems '()))
           (dolist (system (ql:provided-systems (ql-dist:find-release name)))
-            (handler-case
-                (let ((system
-                        (read-from-string
-                         (with-output-to-string (s)
-                           (uiop:run-program `(#+darwin "gtimeout"
-                                               #-darwin "timeout"
-                                               "5m"
-                                               ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
-                                               ,(ql-dist:name system) ,ql-dist-version)
-                                             :output s
-                                             :error-output *error-output*)))))
-                  (when (getf system :failed)
-                    (setf failed t))
-                  (push system serialized-systems))
-              (uiop:subprocess-error (e)
-                (setf failed t)
-                (let ((error-log
-                        (if (= (uiop:subprocess-error-code e) 124)
-                            "Timeout."
-                            (princ-to-string e))))
-                  (push (list :type :system
-                              :name (ql-dist:name system)
-                              :failed t
-                              :error-log error-log)
-                        serialized-systems)))))
+            (multiple-value-bind (out errout exit-code)
+                (uiop:run-program `(#+darwin "gtimeout"
+                                    #-darwin "timeout"
+                                    "5m"
+                                    ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
+                                    ,(ql-dist:name system) ,ql-dist-version)
+                                  :error-output *error-output*
+                                  :ignore-error-status t)
+              (declare (ignore errout))
+              (cond
+                (;; success
+                 (= exit-code 0)
+                 (let ((system (read-from-string out)))
+                   (when (getf system :failed)
+                     (setf failed t))
+                   (push system serialized-systems)))
+                (t (setf failed t)
+                   (push (list :type :system
+                               :name (ql-dist:name system)
+                               :failed t
+                               :error-log (if (= exit-code 124)
+                                              "Subprocess extracting a system exceeded the time limit."
+                                              (format nil
+                                                      "Subprocess extracting a system failed (Code=~D)." exit-code)))
+                         serialized-systems)))))
           (setf (getf release-info :systems) serialized-systems))))
     (prin1 release-info)
     (uiop:quit (if failed -1 0))))
