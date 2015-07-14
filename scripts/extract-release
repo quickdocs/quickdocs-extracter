@@ -8,6 +8,14 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
 
 (use-package :quickdocs-extracter.util)
 
+(defun read-last-from-string (string)
+  (loop with eof = '#:eof
+        with last
+        for form = (read-from-string string nil eof)
+        until (eq form eof)
+        do (setq last form)
+        finally (return last)))
+
 (defun main (&optional name (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp"))))
   (unless name
     (format *error-output* "~&Usage: extract-release <release name> [<ql dist version>]~%")
@@ -38,7 +46,7 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
               (cond
                 (;; success
                  (= exit-code 0)
-                 (let ((system (read-from-string (get-output-stream-string out))))
+                 (let ((system (read-last-from-string (get-output-stream-string out))))
                    (when (getf system :failed)
                      (setf failed t))
                    (push system serialized-systems)))
