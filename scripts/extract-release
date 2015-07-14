@@ -11,9 +11,11 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
 (defun read-last-from-string (string)
   (loop with eof = '#:eof
         with last
-        for form = (read-from-string string nil eof)
+        with start = 0
+        for (form next) = (multiple-value-list (read-from-string string nil eof :start start))
         until (eq form eof)
-        do (setq last form)
+        do (setq last form
+                 start next)
         finally (return last)))
 
 (defun main (&optional name (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp"))))
