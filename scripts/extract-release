@@ -46,10 +46,21 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
               (cond
                 (;; success
                  (= exit-code 0)
-                 (let ((system (read-last-from-string (get-output-stream-string out))))
-                   (when (getf system :failed)
-                     (setf failed t))
-                   (push system serialized-systems)))
+                 (let* ((out-str (get-output-stream-string out))
+                        (system (read-last-from-string out-str)))
+                   (if (and (consp system)
+                            (zerop (mod (length system) 2)))
+                       (progn
+                         (when (getf system :failed)
+                           (setf failed t))
+                         (push system serialized-systems))
+                       (progn
+                         (setf failed t)
+                         (push (list :type :system
+                                     :name (ql-dist:name system)
+                                     :failed t
+                                     :error-log "Invalid output: ~S" out-str)
+                               serialized-systems)))))
                 (t (setf failed t)
                    (push (list :type :system
                                :name (ql-dist:name system)
