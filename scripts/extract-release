@@ -11,7 +11,7 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
 (defun read-last-from-string (string)
   (loop with eof = '#:eof
         with last
-        with start = 0
+        with start = (or (position #\( string) 0)
         for (form next) = (multiple-value-list (read-from-string string nil eof :start start))
         until (eq form eof)
         do (setq last form
