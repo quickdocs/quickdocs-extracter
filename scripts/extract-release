@@ -8,15 +8,21 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
 
 (use-package :quickdocs-extracter.util)
 
-(defun read-last-from-string (string)
-  (loop with eof = '#:eof
-        with last
-        with start = (or (position #\( string) 0)
-        for (form next) = (multiple-value-list (read-from-string string nil eof :start start))
-        until (eq form eof)
-        do (setq last form
-                 start next)
-        finally (return last)))
+(defun read-data-from-string (string &key (start 0))
+  ;; Skip garbage lines
+  (setf start
+        (loop with current = start
+              while (< current (length string))
+              if (char= (aref string current) #\()
+                do (return current)
+              else
+                do (let ((next (position #\Newline string :start current)))
+                     (if next
+                         (setf current (1+ next))
+                         (return nil)))))
+  (when (null start)
+    (return-from read-data-from-string nil))
+  (read-from-string string nil nil :start start))
 
 (defun main (&optional name (ql-dist-version (ql-dist:version (ql-dist:dist "quicklisp"))))
   (unless name
@@ -49,7 +55,7 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
                 (;; success
                  (= exit-code 0)
                  (let* ((out-str (get-output-stream-string out))
-                        (system (read-last-from-string out-str)))
+                        (system (read-data-from-string out-str)))
                    (if (and (consp system)
                             (zerop (mod (length system) 2)))
                        (progn
