@@ -19,12 +19,12 @@
   :author "Eitaro Fukamachi"
   :license "BSD 2-Clause"
   :depends-on (:quickdocs-parser
+               :quickdocs-serializer
                :uiop)
   :components ((:module "src"
                 :components
-                ((:file "quickdocs-extracter" :depends-on ("parser" "data"))
+                ((:file "quickdocs-extracter" :depends-on ("parser"))
                  (:file "parser")
-                 (:file "data")
                  (:file "util"))))
   :description "Extracts symbol informations of libraries for Quickdocs API reference"
   :long-description

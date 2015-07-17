@@ -3,7 +3,7 @@
   (:use :cl
         :quickdocs-parser
         :quickdocs-extracter.parser
-        :quickdocs-extracter.data)
+        :quickdocs-serializer)
   (:shadowing-import-from :quickdocs-extracter.parser
                           :variable-node
                           :method-node)
