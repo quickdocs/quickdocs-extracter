@@ -4,3 +4,6 @@
 [submodule "modules/legion"]
 	path = modules/legion
 	url = https://github.com/fukamachi/legion
+[submodule "modules/quickdocs-serializer"]
+	path = modules/quickdocs-serializer
+	url = https://github.com/quickdocs/quickdocs-serializer
