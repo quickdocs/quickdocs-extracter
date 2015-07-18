@@ -229,12 +229,16 @@
 (defmethod serialize-node ((node function-node))
   `(:type :function
     ,@(call-next-method)
-    :setfp ,(operator-setf-p node)))
+    ,@(if (operator-setf-p node)
+          '(:setfp t)
+          '())))
 
 (defmethod serialize-node ((node method-node))
   `(:type :method
     ,@(call-next-method)
-    :setfp ,(operator-setf-p node)
+    ,@(if (operator-setf-p node)
+          '(:setfp t)
+          '())
     :qualifiers ,(mapcar (lambda (qualifier)
                            (if (keywordp qualifier)
                                qualifier
@@ -244,7 +248,9 @@
 (defmethod serialize-node ((node generic-function-node))
   `(:type :generic-function
     ,@(call-next-method)
-    :setfp ,(operator-setf-p node)))
+    ,@(if (operator-setf-p node)
+          '(:setfp t)
+          '())))
 
 (defmethod serialize-node ((node macro-node))
   `(:type :macro ,@(call-next-method)))
