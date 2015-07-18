@@ -201,7 +201,13 @@
         (let (symbols)
           (do-nodes (node package)
             (push (serialize-node node) symbols))
-          (nreverse symbols))))
+          (nreverse symbols))
+        :reexport-symbols
+        (let ((pkg (find-package (package-index-name package)))
+              symbols)
+          (do-external-symbols (symb pkg (nreverse symbols))
+            (unless (eq (symbol-package symb) pkg)
+              (push (serialize-symbol symb) symbols))))))
 
 (defgeneric serialize-node (node)
   (:method ((node name-node))
