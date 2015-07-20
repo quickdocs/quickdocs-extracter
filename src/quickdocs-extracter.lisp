@@ -6,7 +6,8 @@
         :quickdocs-serializer)
   (:shadowing-import-from :quickdocs-extracter.parser
                           :variable-node
-                          :method-node)
+                          :method-node
+                          :struct-node)
   (:export :serialize-release
            :serialize-system
            :get-system-basic-info))
@@ -284,7 +285,8 @@
 
 (defmethod serialize-node ((node struct-node))
   `(:type :struct
-    ,@(call-next-method)))
+    ,@(call-next-method)
+    :include-structs ,(mapcar #'serialize-node (struct-node-include-structs node))))
 
 (defmethod serialize-node ((node class-node))
   `(:type :class

@@ -3,13 +3,16 @@
   (:use :cl
         :quickdocs-parser)
   (:shadow :variable-node
-           :method-node)
+           :method-node
+           :struct-node)
   (:export :variable-node
            :constant-node
            :method-node
+           :struct-node
            :initial-value
            :variable-node-initial-value
-           :method-node-qualifiers))
+           :method-node-qualifiers
+           :struct-node-include-structs))
 (in-package :quickdocs-extracter.parser)
 
 (defclass variable-node (quickdocs-parser:variable-node)
@@ -66,3 +69,33 @@
                    :qualifiers qualifiers
                    :lambda-list lambda-list
                    :docstring docstring)))
+
+(defclass struct-node (quickdocs-parser:struct-node)
+  ((include-structs :initarg :include-structs
+                    :initform nil
+                    :reader struct-node-include-structs)))
+
+(define-parser cl:defstruct (name-and-options &rest slots)
+  (let* ((name (if (listp name-and-options)
+                   (first name-and-options)
+                   name-and-options))
+         (includes (if (listp name-and-options)
+                       (mapcan #'cdr
+                               (remove-if-not
+                                (lambda (option)
+                                  (and (consp option)
+                                       (eq (first option) :include)))
+                                (rest name-and-options)))
+                       nil))
+         (docstring (if (stringp (first slots))
+                        (first slots)
+                        nil))
+         (slots (if (stringp (first slots))
+                    (rest slots)
+                    slots)))
+    (make-instance 'struct-node
+                   :name name
+                   :docstring docstring
+                   :slots (loop for slot in slots
+                                collecting (quickdocs-parser::parse-struct-slot slot))
+                   :include-structs includes)))
