@@ -1,4 +1,61 @@
 #!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
 
-PROJECT_ROOT=$(dirname $(dirname $0))
-docker build -t quickdocs/quickdocs-extracter -f "$PROJECT_ROOT/Dockerfile.init" $PROJECT_ROOT
+(defun chomp (string)
+  (cond
+    ((= 0 (length string)) string)
+    ((char= #\Newline (aref string (1- (length string))))
+     (subseq string 0 (1- (length string))))
+    (t string)))
+
+(defun docker-image-created-at (grep)
+  (let ((id
+          (chomp
+           (with-output-to-string (s)
+             (uiop:run-program
+              (format nil
+                      "docker images --no-trunc | grep ~S | awk '{ print $3 }'"
+                      grep)
+              :output s
+              :error-output *error-output*)))))
+    (if (= 0 (length id))
+        nil
+        (chomp
+         (with-output-to-string (s)
+           (uiop:run-program
+            (format nil "docker inspect ~A | grep Created | cut -d'\"' -f 4" id)
+            :output s
+            :error-output *error-output*))))))
+
+(defun dockerfile-updated-p (&key since)
+  (assert since)
+  (not (zerop
+        (length
+         (with-output-to-string (s)
+           (uiop:run-program
+            (format nil
+                    "git --git-dir=~S log -1 --since=~A -- Dockerfile.base"
+                    (namestring
+                     (asdf:system-relative-pathname :quickdocs-extracter #P".git"))
+                    since)
+            :output s
+            :error-output *error-output*))))))
+
+(defun docker-build (file)
+  (uiop:run-program
+   `("docker" "build" "-t" "quickdocs/quickdocs-extracter-base"
+              "-f" ,(namestring (asdf:system-relative-pathname :quickdocs-extracter file))
+              ,(namestring (asdf:system-source-directory :quickdocs-extracter)))
+   :output *standard-output*
+   :error-output *error-output*))
+
+(defun main (&rest argv)
+  (declare (ignore argv))
+  (let ((created-at (docker-image-created-at "quickdocs/quickdocs-extracter-base")))
+    (when (or (null created-at)
+              (dockerfile-updated-p :since created-at))
+      (docker-build #P"Dockerfile.base")))
+  (docker-build #P"Dockerfile.init"))
