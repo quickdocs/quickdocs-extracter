@@ -233,3 +233,6 @@ RUN apt-get install -y libpapi-dev
 
 # libsnappy.so for thnappy
 RUN apt-get install -y libsnappy-dev
+
+# libgit2 for cl-git
+RUN apt-get install -y libgit2-dev
