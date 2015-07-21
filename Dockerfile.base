@@ -239,3 +239,6 @@ RUN apt-get install -y libgit2-dev
 
 # libglpk for cl-opsresearch
 RUN apt-get install -y libglpk-dev
+
+# libgvc.so for hu.dwim.graphviz
+RUN apt-get install -y libgvc6
