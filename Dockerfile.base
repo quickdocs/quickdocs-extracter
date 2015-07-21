@@ -236,3 +236,6 @@ RUN apt-get install -y libsnappy-dev
 
 # libgit2 for cl-git
 RUN apt-get install -y libgit2-dev
+
+# libglpk for cl-opsresearch
+RUN apt-get install -y libglpk-dev
