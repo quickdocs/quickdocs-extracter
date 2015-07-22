@@ -40,6 +40,7 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
         (let ((serialized-systems '()))
           (dolist (system (ql:provided-systems (ql-dist:find-release name)))
             (let* ((out (make-string-output-stream))
+                   (errout (make-string-output-stream))
                    (exit-code
                      (nth-value
                       2
@@ -49,7 +50,7 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
                                           ,(namestring (merge-pathnames #P"extract-system" *load-pathname*))
                                           ,(ql-dist:name system) ,ql-dist-version)
                                         :output out
-                                        :error-output *error-output*
+                                        :error-output (make-broadcast-stream errout *error-output*)
                                         :ignore-error-status t))))
               (cond
                 (;; success
@@ -75,8 +76,7 @@ exec ros -Q dynamic-space-size=400 -- $0 "$@"
                                :failed t
                                :error-log (if (= exit-code 124)
                                               "Subprocess extracting a system exceeded the time limit."
-                                              (format nil
-                                                      "Subprocess extracting a system failed (Code=~D)." exit-code)))
+                                              (get-output-stream-string errout)))
                          serialized-systems)))))
           (setf (getf release-info :systems) serialized-systems))))
     (prin1 release-info)
