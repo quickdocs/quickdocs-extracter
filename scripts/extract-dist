@@ -47,25 +47,26 @@ exec ros -Q -- $0 "$@"
                (errors-dir   (merge-pathnames #P"errors/" dists-dir)))
   (format *error-output* "~&Extracting Quicklisp dist ~S to '~A'...~%" ql-dist-version dists-dir)
   (let (releases)
-    (when (uiop:directory-exists-p dists-dir)
-      (ecase (intern (string-upcase if-exists) :keyword)
-        (:error (error "Directory '~A' already exists." dists-dir))
-        (:delete-and-retry
-         (mapc (lambda (dir)
-                 (format *error-output* "~&Deleting '~A'...~%" dir)
-                 (uiop:delete-directory-tree dir :validate t))
-               (list releases-dir logs-dir errors-dir))
-         (setf releases (ql-releases ql-dist-version)))
-        (:retry-only-errors
-         (setf releases (retry-releases ql-dist-version releases-dir errors-dir))
-         (format *error-output* "~&Retrying ~D releases...~%"
-                 (length releases))
-         (dolist (release releases)
-           (dolist (dir (list releases-dir
-                              errors-dir
-                              logs-dir))
-             (when (probe-file (merge-pathnames release dir))
-               (delete-file (merge-pathnames release dir))))))))
+    (if (uiop:directory-exists-p dists-dir)
+        (ecase (intern (string-upcase if-exists) :keyword)
+          (:error (error "Directory '~A' already exists." dists-dir))
+          (:delete-and-retry
+           (mapc (lambda (dir)
+                   (format *error-output* "~&Deleting '~A'...~%" dir)
+                   (uiop:delete-directory-tree dir :validate t))
+                 (list releases-dir logs-dir errors-dir))
+           (setf releases (ql-releases ql-dist-version)))
+          (:retry-only-errors
+           (setf releases (retry-releases ql-dist-version releases-dir errors-dir))
+           (format *error-output* "~&Retrying ~D releases...~%"
+                   (length releases))
+           (dolist (release releases)
+             (dolist (dir (list releases-dir
+                                errors-dir
+                                logs-dir))
+               (when (probe-file (merge-pathnames release dir))
+                 (delete-file (merge-pathnames release dir)))))))
+        (setf releases (ql-releases ql-dist-version)))
     (mapc #'ensure-directories-exist (list releases-dir logs-dir errors-dir))
     (let* ((bt:*default-special-bindings* `((*standard-output* . ,*standard-output*)
                                             (*error-output* . ,*error-output*)))
